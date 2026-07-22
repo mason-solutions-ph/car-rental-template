@@ -1,4 +1,4 @@
-import { DEMO_CARS, DEMO_LOCATIONS } from "@/lib/data/demo";
+import { getFleetRepo } from "@/lib/data/get-fleet-repo";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -34,9 +34,12 @@ export type AdminBookingDetail = Booking & {
 };
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
-  if (!isSupabaseConfigured()) {
+  const fleet = await getFleetRepo();
+  const publishedPage = await fleet.listPublishedCars({ pageSize: 1 });
+
+  if (fleet.mode === "demo") {
     return {
-      publishedCars: DEMO_CARS.filter((c) => c.is_published).length,
+      publishedCars: publishedPage.total,
       unpaidPending: 0,
       paidThisWeek: 0,
       grossPaidCents: 0,
@@ -45,12 +48,6 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   }
 
   const supabase = await createClient();
-
-  const { count: publishedCars } = await supabase
-    .from("cars")
-    .select("*", { count: "exact", head: true })
-    .eq("is_published", true)
-    .neq("status", "retired");
 
   const { count: unpaidPending } = await supabase
     .from("bookings")
@@ -76,7 +73,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   ).length;
 
   return {
-    publishedCars: publishedCars ?? 0,
+    publishedCars: publishedPage.total,
     unpaidPending: unpaidPending ?? 0,
     paidThisWeek,
     grossPaidCents,
@@ -85,43 +82,13 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
 }
 
 export async function listAdminCars(): Promise<Car[]> {
-  if (!isSupabaseConfigured()) {
-    return [...DEMO_CARS].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("cars")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return (data ?? []) as Car[];
+  const fleet = await getFleetRepo();
+  return fleet.listAllCars();
 }
 
 export async function getAdminCarById(id: string): Promise<Car | null> {
-  if (!isSupabaseConfigured()) {
-    return DEMO_CARS.find((c) => c.id === id) ?? null;
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("cars")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) {
-    console.error(error);
-    return null;
-  }
-  return data as Car | null;
+  const fleet = await getFleetRepo();
+  return fleet.getCarById(id);
 }
 
 export async function listAdminBookings(
@@ -178,21 +145,8 @@ export async function getAdminBookingById(
 }
 
 export async function listAdminLocations(): Promise<Location[]> {
-  if (!isSupabaseConfigured()) {
-    return DEMO_LOCATIONS.filter((l) => l.is_published);
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("locations")
-    .select("*")
-    .order("sort_order", { ascending: true });
-
-  if (error) {
-    console.error(error);
-    return [];
-  }
-  return (data ?? []) as Location[];
+  const fleet = await getFleetRepo();
+  return fleet.listAllLocations();
 }
 
 export type AdminContactMessage = {

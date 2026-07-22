@@ -39,3 +39,7 @@ _Avoid_: Refund eligibility (refunds are separate and manual in v1)
 **Fleet**:
 The operator’s published cars available to browse and book.
 _Avoid_: Inventory (except hold/overlap talk), catalog alone
+
+**Demo mode**:
+Running without a live Supabase project; fleet reads use seed data behind the same fleet repository interface as production.
+_Avoid_: Offline mode, mock mode (prefer “demo”)
