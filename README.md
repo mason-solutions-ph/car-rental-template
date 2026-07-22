@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aether Drive — Car Rental Template
 
-## Getting Started
+Next.js 16 car rental template with **shadcn/ui**, **Supabase**, **GSAP**, and **PayMongo** (PHP).
 
-First, run the development server:
+## Stack
+
+- Next.js App Router + Tailwind v4 + shadcn (radix-nova)
+- Supabase Auth + Postgres + RLS
+- PayMongo Checkout Session V2 (webhooks)
+- GSAP via `@gsap/react`
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+cp .env.example .env.local
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Supabase local (recommended first)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Ports are **offset** (`55321+`) so this stack can run next to another project on the default `54321` ports.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Requires Docker Desktop
+supabase start
+supabase status -o env   # copy ANON_KEY / SERVICE_ROLE_KEY / API_URL
 
-## Learn More
+# After changing migrations/seed:
+supabase db reset --local
+```
 
-To learn more about Next.js, take a look at the following resources:
+`.env.local` for local (example values from `supabase status -o env`):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55321
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<ANON_KEY jwt>
+SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY jwt>
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Service | URL |
+|---------|-----|
+| API | http://127.0.0.1:55321 |
+| Studio | http://127.0.0.1:55323 |
+| Mailpit | http://127.0.0.1:55324 |
+| DB | postgresql://postgres:postgres@127.0.0.1:55322/postgres |
 
-## Deploy on Vercel
+Migrations live in `supabase/migrations/` (includes grants for `anon` / `authenticated`). Seed: `supabase/seed.sql` (10 cars, 3 PH locations).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Promote an admin after signup:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```sql
+update public.profiles set role = 'admin' where id = '<your-user-uuid>';
+```
+
+### Supabase cloud
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Run migrations `20240101000001` … `09` then `seed.sql` (or `supabase db push`)
+3. Copy URL + anon key into `.env.local`
+
+
+### PayMongo
+
+1. [Dashboard](https://dashboard.paymongo.com) → API keys (`sk_test_…`)
+2. Create webhook → `https://your-domain/api/webhooks/paymongo`
+   - Event: `checkout_session.payment.paid`
+3. Set `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_URL`
+4. Local webhooks: tunnel (e.g. cloudflared) to your machine
+
+### Demo mode
+
+Without Supabase keys the site still renders the fleet from `lib/data/demo.ts`. Bookings/auth need a live project.
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `bun run dev` | Dev server |
+| `bun run build` | Production build |
+| `bun run start` | Start production server |
+
+## Implementation plan
+
+See [docs/FULL-PLAN.md](docs/FULL-PLAN.md) for the full phased plan.

@@ -3,13 +3,16 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/require-user";
 import {
-  attachCheckoutSession,
   cancelBooking as lifecycleCancel,
   createBooking,
 } from "@/lib/bookings/lifecycle";
+import {
+  canStartCheckout,
+  startCheckout,
+  toStartCheckoutBooking,
+} from "@/lib/bookings/start-checkout";
 import { createSupabaseBookingStore } from "@/lib/bookings/supabase-store";
-import { getAppUrl, isPaymongoConfigured, isSupabaseConfigured } from "@/lib/env";
-import { createCheckoutSession } from "@/lib/paymongo/checkout";
+import { isPaymongoConfigured, isSupabaseConfigured } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { bookingCreateSchema } from "@/lib/validations/booking";
@@ -98,29 +101,19 @@ export async function createBookingAndCheckout(
     redirect(`/account/bookings/${bookingId}?demo=1`);
   }
 
-  try {
-    const appUrl = getAppUrl();
-    const checkout = await createCheckoutSession({
-      bookingId,
-      referenceCode,
-      amountCentavos: totalCents,
-      carName,
-      rentalDays,
-      successUrl: `${appUrl}/bookings/payment/success?booking_id=${bookingId}`,
-      cancelUrl: `${appUrl}/bookings/payment/cancel?booking_id=${bookingId}`,
-    });
+  const checkout = await startCheckout(store, {
+    bookingId,
+    referenceCode,
+    totalCents,
+    rentalDays,
+    carName,
+  });
 
-    await attachCheckoutSession(store, bookingId, checkout.id);
-    redirect(checkout.checkoutUrl);
-  } catch (e) {
-    console.error(e);
-    return {
-      error:
-        e instanceof Error
-          ? e.message
-          : "Payment session failed. You can retry from your booking page.",
-    };
+  if (!checkout.ok) {
+    return { error: checkout.error };
   }
+
+  redirect(checkout.checkoutUrl);
 }
 
 export async function retryCheckout(
@@ -137,31 +130,20 @@ export async function retryCheckout(
   if (!booking || booking.customer_id !== session.user.id) {
     return { error: "Booking not found." };
   }
-  if (booking.payment_status !== "unpaid" || booking.status !== "pending") {
+  if (!canStartCheckout(booking)) {
     return { error: "This booking cannot be paid again." };
   }
 
-  try {
-    const appUrl = getAppUrl();
-    const carName = booking.car_name ?? "Car rental";
-    const checkout = await createCheckoutSession({
-      bookingId: booking.id,
-      referenceCode: booking.reference_code,
-      amountCentavos: booking.total_cents,
-      carName,
-      rentalDays: booking.rental_days,
-      successUrl: `${appUrl}/bookings/payment/success?booking_id=${booking.id}`,
-      cancelUrl: `${appUrl}/bookings/payment/cancel?booking_id=${booking.id}`,
-    });
+  const checkout = await startCheckout(
+    store,
+    toStartCheckoutBooking(booking)
+  );
 
-    await attachCheckoutSession(store, booking.id, checkout.id);
-    redirect(checkout.checkoutUrl);
-  } catch (e) {
-    console.error(e);
-    return {
-      error: e instanceof Error ? e.message : "Could not start checkout.",
-    };
+  if (!checkout.ok) {
+    return { error: checkout.error };
   }
+
+  redirect(checkout.checkoutUrl);
 }
 
 export async function cancelBooking(
