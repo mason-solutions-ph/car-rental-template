@@ -2,6 +2,7 @@ import {
   CANCEL_MIN_HOURS_BEFORE_PICKUP,
   CHECKOUT_HOLD_MINUTES,
 } from "@/lib/constants";
+import { isCarAvailableForRange } from "@/lib/cars/availability";
 import { quoteRental } from "@/lib/cars/pricing";
 import type { BookingStatus, PaymentStatus } from "@/types";
 import type {
@@ -111,11 +112,10 @@ export async function createBooking(
     holdCutoff(now, CHECKOUT_HOLD_MINUTES)
   );
 
-  const available = await store.isCarAvailable({
+  const available = await isCarAvailableForRange(store, {
     carId: intent.carId,
     pickupAt: intent.pickupAt,
     dropoffAt: intent.dropoffAt,
-    holdMinutes: CHECKOUT_HOLD_MINUTES,
   });
   if (!available) {
     return { ok: false, error: "Those dates are not available for this car." };
