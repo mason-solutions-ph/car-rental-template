@@ -323,16 +323,45 @@ export const DEMO_CARS: Car[] = carSeeds.map((c) => ({
   updated_at: now,
 }));
 
+/** Extra Unsplash angles for gallery demos (by class). */
+const GALLERY_EXTRAS: Record<string, string[]> = {
+  economy: [
+    "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=1200&q=80",
+    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=1200&q=80",
+  ],
+  compact: [
+    "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1200&q=80",
+  ],
+  sedan: [
+    "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=1200&q=80",
+  ],
+  suv: [
+    "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=1200&q=80",
+    "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=1200&q=80",
+  ],
+  luxury: [
+    "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=1200&q=80",
+  ],
+  sports: [
+    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&q=80",
+  ],
+  van: [
+    "https://images.unsplash.com/photo-1464219789935-c2d9d9aba644?w=1200&q=80",
+  ],
+};
+
 export function demoImagesForCar(car: Car): CarImage[] {
   if (!car.hero_image_url) return [];
-  return [
-    {
-      id: `${car.id}-img-0`,
-      car_id: car.id,
-      url: car.hero_image_url,
-      alt: car.name,
-      sort_order: 0,
-      created_at: now,
-    },
-  ];
+  const extras = (GALLERY_EXTRAS[car.class] ?? []).filter(
+    (url) => url !== car.hero_image_url
+  );
+  const urls = [car.hero_image_url, ...extras].slice(0, 3);
+  return urls.map((url, i) => ({
+    id: `${car.id}-img-${i}`,
+    car_id: car.id,
+    url,
+    alt: i === 0 ? car.name : `${car.name} view ${i + 1}`,
+    sort_order: i,
+    created_at: now,
+  }));
 }

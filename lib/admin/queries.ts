@@ -149,6 +149,14 @@ export async function listAdminLocations(): Promise<Location[]> {
   return fleet.listAllLocations();
 }
 
+export async function getAdminLocationById(
+  id: string
+): Promise<Location | null> {
+  const fleet = await getFleetRepo();
+  const all = await fleet.listAllLocations();
+  return all.find((l) => l.id === id) ?? null;
+}
+
 export type AdminContactMessage = {
   id: string;
   name: string;

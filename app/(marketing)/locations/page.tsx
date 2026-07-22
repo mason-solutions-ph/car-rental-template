@@ -22,7 +22,7 @@ export default async function LocationsPage() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {locations.map((loc) => (
-          <Link key={loc.id} href={`/cars?location=${loc.slug}`}>
+          <Link key={loc.id} href={`/locations/${loc.slug}`}>
             <Card className="h-full transition-shadow hover:shadow-md">
               <CardHeader>
                 <CardTitle className="text-base">{loc.name}</CardTitle>

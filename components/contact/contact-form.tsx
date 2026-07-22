@@ -15,7 +15,7 @@ export function ContactForm() {
   const [state, action, pending] = useActionState(submitContact, initial);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form action={action} className="relative flex flex-col gap-4">
       {state.error ? (
         <Alert variant="destructive">
           <AlertDescription>{state.error}</AlertDescription>
@@ -33,6 +33,16 @@ export function ContactForm() {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" required />
+      </div>
+      {/* Honeypot — leave empty; bots often fill hidden fields */}
+      <div className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden" aria-hidden="true">
+        <Label htmlFor="company">Company</Label>
+        <Input
+          id="company"
+          name="company"
+          tabIndex={-1}
+          autoComplete="off"
+        />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="subject">Subject</Label>

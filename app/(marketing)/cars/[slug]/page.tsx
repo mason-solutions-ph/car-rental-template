@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { CarGallery } from "@/components/cars/car-gallery";
 import { getCarBySlug } from "@/lib/cars/queries";
 import { quoteRental } from "@/lib/cars/pricing";
 import { formatMoney } from "@/lib/format/currency";
@@ -62,23 +62,34 @@ export default async function CarDetailPage({ params, searchParams }: Props) {
   if (location) bookParams.set("dropoff", location);
   const bookHref = `/cars/${car.slug}/book${bookParams.size ? `?${bookParams}` : ""}`;
 
-  const img =
-    car.hero_image_url || car.car_images?.[0]?.url || "/window.svg";
+  const gallery = (() => {
+    const fromTable = [...(car.car_images ?? [])].sort(
+      (a, b) => a.sort_order - b.sort_order
+    );
+    if (fromTable.length) {
+      return fromTable.map((i) => ({
+        id: i.id,
+        url: i.url,
+        alt: i.alt,
+      }));
+    }
+    if (car.hero_image_url) {
+      return [
+        {
+          id: "hero",
+          url: car.hero_image_url,
+          alt: car.name,
+        },
+      ];
+    }
+    return [];
+  })();
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
       <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="flex flex-col gap-6">
-          <div className="bg-muted relative aspect-[16/10] overflow-hidden rounded-xl">
-            <Image
-              src={img}
-              alt={car.name}
-              fill
-              priority
-              className="object-cover"
-              sizes="(max-width:1024px) 100vw, 60vw"
-            />
-          </div>
+          <CarGallery images={gallery} carName={car.name} />
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary" className="capitalize">

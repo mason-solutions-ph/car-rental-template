@@ -10,6 +10,11 @@ export async function submitContact(
   _prev: ContactState,
   formData: FormData
 ): Promise<ContactState> {
+  // Honeypot: real users leave this empty
+  if (String(formData.get("company") || "").trim()) {
+    return { success: "Thanks — we will get back to you soon." };
+  }
+
   const parsed = contactSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),

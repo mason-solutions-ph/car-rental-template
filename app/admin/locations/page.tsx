@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
@@ -5,6 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { listAdminLocations } from "@/lib/admin/queries";
+import { isSupabaseConfigured } from "@/lib/env";
 
 export const metadata = { title: "Admin locations" };
 
@@ -13,12 +16,30 @@ export default async function AdminLocationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Locations</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight">Locations</h1>
+        {isSupabaseConfigured() ? (
+          <Button asChild size="sm">
+            <Link href="/admin/locations/new">Add location</Link>
+          </Button>
+        ) : null}
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {locations.map((loc) => (
           <Card key={loc.id}>
             <CardHeader>
-              <CardTitle className="text-base">{loc.name}</CardTitle>
+              <CardTitle className="text-base">
+                {isSupabaseConfigured() ? (
+                  <Link
+                    href={`/admin/locations/${loc.id}/edit`}
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {loc.name}
+                  </Link>
+                ) : (
+                  loc.name
+                )}
+              </CardTitle>
               <CardDescription>
                 {loc.city}
                 {loc.region ? `, ${loc.region}` : ""} · {loc.slug}
@@ -28,10 +49,11 @@ export default async function AdminLocationsPage() {
           </Card>
         ))}
       </div>
-      <p className="text-muted-foreground text-xs">
-        Seed / SQL is the source of truth for locations in v1. Full CRUD can
-        extend this page later.
-      </p>
+      {!isSupabaseConfigured() ? (
+        <p className="text-muted-foreground text-xs">
+          Demo locations are read-only. Connect Supabase to create and edit.
+        </p>
+      ) : null}
     </div>
   );
 }

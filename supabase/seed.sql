@@ -84,3 +84,11 @@ insert into public.cars (
 
 insert into public.car_images (car_id, url, alt, sort_order)
 select id, hero_image_url, name, 0 from public.cars where is_published = true;
+
+-- Extra gallery angles for a few featured cars (demo marketing)
+insert into public.car_images (car_id, url, alt, sort_order) values
+  ('a0000000-0000-4000-8000-000000000001', 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=1200&q=80', 'Toyota Vios detail', 1),
+  ('a0000000-0000-4000-8000-000000000001', 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=1200&q=80', 'Toyota Vios rear', 2),
+  ('a0000000-0000-4000-8000-000000000004', 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=1200&q=80', 'Fortuner angle', 1),
+  ('a0000000-0000-4000-8000-000000000006', 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=1200&q=80', 'BMW cabin / exterior', 1),
+  ('a0000000-0000-4000-8000-000000000009', 'https://images.unsplash.com/photo-1584345604476-8ec5f82d4963?w=1200&q=80', '911 side profile', 1);
