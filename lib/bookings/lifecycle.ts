@@ -170,7 +170,8 @@ export async function attachCheckoutSession(
   bookingId: string,
   checkoutSessionId: string
 ): Promise<LifecycleResult> {
-  await store.update(bookingId, {
+  // Service-role write: customers can only cancel via RLS (not attach session ids).
+  await store.privilegedUpdate(bookingId, {
     paymongo_checkout_session_id: checkoutSessionId,
   });
   return { ok: true, data: undefined as void };

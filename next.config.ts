@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Cloudflare quick tunnels + local preview
+  allowedDevOrigins: [
+    "*.trycloudflare.com",
+    "consequently-expand-celebrate-likes.trycloudflare.com",
+  ],
   images: {
     remotePatterns: [
       {
