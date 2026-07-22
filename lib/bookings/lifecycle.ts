@@ -233,9 +233,12 @@ export async function markPaid(
 
   if (input.checkoutSessionId) {
     booking = await store.getByCheckoutSessionId(input.checkoutSessionId);
-  } else if (input.bookingId) {
+  }
+  // Fallback: payment.paid events often lack a checkout session id
+  if (!booking && input.bookingId) {
     booking = await store.getById(input.bookingId);
-  } else {
+  }
+  if (!input.checkoutSessionId && !input.bookingId) {
     return {
       ok: false,
       error: "checkoutSessionId or bookingId required",

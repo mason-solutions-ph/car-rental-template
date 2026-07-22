@@ -55,6 +55,30 @@ describe("normalizeWebhookPaidEvent", () => {
     };
     expect(normalizeWebhookPaidEvent(event)).toBeNull();
   });
+
+  it("maps payment.paid using booking metadata, not payment id as session", () => {
+    const event: PaymongoWebhookEvent = {
+      data: {
+        id: "evt_2",
+        type: "event",
+        attributes: {
+          type: "payment.paid",
+          data: {
+            id: "pay_abc",
+            type: "payment",
+            attributes: {
+              amount: 440000,
+              metadata: { booking_id: "book-99" },
+            },
+          },
+        },
+      },
+    };
+    const paid = normalizeWebhookPaidEvent(event);
+    expect(paid?.checkoutSessionId).toBeUndefined();
+    expect(paid?.bookingId).toBe("book-99");
+    expect(paid?.paymentId).toBe("pay_abc");
+  });
 });
 
 describe("normalizeCheckoutSessionPaid", () => {

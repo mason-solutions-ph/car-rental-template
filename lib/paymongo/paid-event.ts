@@ -50,11 +50,11 @@ export function normalizeWebhookPaidEvent(
     };
   }
 
-  // payment.paid — prefer booking metadata; session id may be absent
+  // payment.paid — resource id is a payment, not a checkout session
   if (!bookingId && !sessionId) return null;
   return {
     source: "webhook",
-    checkoutSessionId: sessionId,
+    checkoutSessionId: undefined,
     bookingId,
     paymentId: paymentId ?? sessionId,
     paymentIntentId,
