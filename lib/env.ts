@@ -9,6 +9,19 @@ export function isPaymongoConfigured(): boolean {
   return Boolean(key && key.startsWith("sk_"));
 }
 
+export function isServiceRoleConfigured(): boolean {
+  return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+/** Webhook + success reconcile need secret + service role. */
+export function canReconcilePayment(): boolean {
+  return (
+    isSupabaseConfigured() &&
+    isPaymongoConfigured() &&
+    isServiceRoleConfigured()
+  );
+}
+
 export function getAppUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }

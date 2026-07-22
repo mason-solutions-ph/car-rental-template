@@ -8,13 +8,9 @@ import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { BookingStatus } from "@/types";
 
-export type AdminBookingActionState = { error?: string };
-
-export async function updateAdminBookingStatus(
-  formData: FormData
-): Promise<AdminBookingActionState> {
+export async function updateAdminBookingStatus(formData: FormData): Promise<void> {
   if (!isSupabaseConfigured()) {
-    return { error: "Supabase not configured" };
+    throw new Error("Supabase not configured");
   }
 
   await requireAdmin();
@@ -24,7 +20,7 @@ export async function updateAdminBookingStatus(
   const adminNote = String(formData.get("adminNote") || "");
 
   if (!id || !status) {
-    return { error: "Missing booking id or status." };
+    throw new Error("Missing booking id or status.");
   }
 
   const user = await createClient();
@@ -36,11 +32,10 @@ export async function updateAdminBookingStatus(
   });
 
   if (!result.ok) {
-    return { error: result.error };
+    throw new Error(result.error);
   }
 
   revalidatePath(`/admin/bookings/${id}`);
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");
-  return {};
 }

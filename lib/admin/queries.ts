@@ -199,7 +199,6 @@ export type AdminContactMessage = {
   id: string;
   name: string;
   email: string;
-  phone: string | null;
   subject: string | null;
   message: string;
   created_at: string;
@@ -213,7 +212,7 @@ export async function listAdminContactMessages(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contact_messages")
-    .select("id, name, email, phone, subject, message, created_at")
+    .select("id, name, email, subject, message, created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
 

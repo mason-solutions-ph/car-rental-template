@@ -63,15 +63,26 @@ update public.profiles set role = 'admin' where id = '<your-user-uuid>';
 
 ### PayMongo
 
-1. [Dashboard](https://dashboard.paymongo.com) → API keys (`sk_test_…`)
-2. Create webhook → `https://your-domain/api/webhooks/paymongo`
-   - Event: `checkout_session.payment.paid`
+1. [Dashboard](https://dashboard.paymongo.com) → Developers → API keys (`sk_test_…`)
+2. Create webhook → `https://your-domain/api/webhooks/paymongo`  
+   - Event: `checkout_session.payment.paid` (optional: `payment.paid`)
 3. Set `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_URL`
-4. Local webhooks: tunnel (e.g. cloudflared) to your machine
+4. Local webhooks: tunnel to the app, e.g.  
+   `cloudflared tunnel --url http://localhost:3000`  
+   then register `https://<tunnel-host>/api/webhooks/paymongo` in the dashboard
+5. **Production requires** `PAYMONGO_WEBHOOK_SECRET` (unsigned webhooks are rejected)
+
+#### Test payment flow
+
+1. Book a car while logged in → redirect to PayMongo Checkout (test mode)
+2. Use [PayMongo test payment methods](https://developers.paymongo.com/docs/testing) (test cards / e-wallet simulators per their docs)
+3. After pay, webhook (or success-page reconcile with service role) sets booking `paid` + `confirmed`
+4. Abandon checkout → booking stays `unpaid`; open booking → **Pay now** retries Checkout
+5. Fake success URL without paying must **not** mark paid unless PayMongo session shows payments
 
 ### Demo mode
 
-Without Supabase keys the site still renders the fleet from `lib/data/demo.ts`. Bookings/auth need a live project.
+Without Supabase keys the site still renders the fleet from `lib/data/demo.ts`. Bookings/auth need a live project. Without `PAYMONGO_SECRET_KEY`, create booking saves as unpaid and redirects with `?demo=1`.
 
 ## Scripts
 
@@ -80,6 +91,11 @@ Without Supabase keys the site still renders the fleet from `lib/data/demo.ts`. 
 | `bun run dev` | Dev server |
 | `bun run build` | Production build |
 | `bun run start` | Start production server |
+| `bun run test` | Unit tests (booking lifecycle + PayMongo normalize) |
+
+## Domain language
+
+See [CONTEXT.md](CONTEXT.md) for Booking / payment vocabulary.
 
 ## Implementation plan
 

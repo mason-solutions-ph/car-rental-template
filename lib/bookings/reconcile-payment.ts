@@ -1,8 +1,5 @@
 import { markBookingPaid } from "@/lib/bookings/mark-paid";
-import {
-  isPaymongoConfigured,
-  isSupabaseConfigured,
-} from "@/lib/env";
+import { canReconcilePayment } from "@/lib/env";
 import { retrieveCheckoutSession } from "@/lib/paymongo/checkout";
 import { normalizeCheckoutSessionPaid } from "@/lib/paymongo/paid-event";
 
@@ -25,11 +22,7 @@ export async function reconcileCheckoutPayment(
   if (!booking.checkoutSessionId) {
     return { reconciled: false, reason: "no_session" };
   }
-  if (
-    !isSupabaseConfigured() ||
-    !isPaymongoConfigured() ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY
-  ) {
+  if (!canReconcilePayment()) {
     return { reconciled: false, reason: "not_configured" };
   }
 
