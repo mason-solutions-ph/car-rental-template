@@ -28,7 +28,7 @@ export async function createCheckoutSession(input: CreateCheckoutInput) {
             description: `${input.rentalDays} day(s) · ${input.referenceCode}`,
           },
         ],
-        payment_method_types: ["card", "gcash", "paymaya", "grab_pay"],
+        payment_method_types: ["qrph"],
         success_url: input.successUrl,
         cancel_url: input.cancelUrl,
         metadata: {
