@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { PaymentStatusBadge } from "@/components/account/booking-status-badge";
 import { ReconcilePaymentButton } from "@/components/admin/reconcile-payment-button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   Table,
   TableBody,
@@ -36,12 +43,18 @@ export function UnpaidBookingsQueue({
 
   if (!rows.length) {
     return (
-      <p className="text-muted-foreground text-sm">{emptyMessage}</p>
+      <Empty className="border border-dashed p-6">
+        <EmptyHeader>
+          <EmptyTitle>Unpaid queue empty</EmptyTitle>
+          <EmptyDescription>{emptyMessage}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 
   return (
-    <div className="rounded-xl border">
+    <Card className="overflow-hidden py-0">
+      <CardContent className="p-0">
       <Table>
         <TableHeader>
           <TableRow>
@@ -96,6 +109,7 @@ export function UnpaidBookingsQueue({
           })}
         </TableBody>
       </Table>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

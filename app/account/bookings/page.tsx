@@ -10,6 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { getSessionProfile } from "@/lib/auth/get-session-profile";
 import { getMyBookings } from "@/lib/bookings/queries";
 import { formatMoney } from "@/lib/format/currency";
@@ -40,12 +46,16 @@ export default async function MyBookingsPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold tracking-tight">My bookings</h1>
       {!bookings.length ? (
-        <div className="rounded-xl border border-dashed p-8 text-center">
-          <p className="font-medium">No bookings yet</p>
-          <Button asChild className="mt-4">
-            <Link href="/cars">Browse fleet</Link>
-          </Button>
-        </div>
+        <Empty className="border border-dashed p-8">
+          <EmptyHeader>
+            <EmptyTitle>No bookings yet</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button asChild>
+              <Link href="/cars">Browse fleet</Link>
+            </Button>
+          </EmptyContent>
+        </Empty>
       ) : (
         <div className="flex flex-col gap-3">
           {bookings.map((b) => (
@@ -57,15 +67,16 @@ export default async function MyBookingsPage() {
                       {b.car?.name ?? "Car"} · {b.reference_code}
                     </CardTitle>
                     <CardDescription>
-                      {formatDateTime(b.pickup_at)} → {formatDateTime(b.dropoff_at)}
+                      {formatDateTime(b.pickup_at)} →{" "}
+                      {formatDateTime(b.dropoff_at)}
                     </CardDescription>
-                    <p className="text-sm font-medium">
-                      {formatMoney(b.total_cents)}
-                    </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <BookingStatusBadge status={b.status} />
                     <PaymentStatusBadge status={b.payment_status} />
+                    <span className="text-sm font-medium">
+                      {formatMoney(b.total_cents)}
+                    </span>
                   </div>
                 </CardHeader>
               </Card>

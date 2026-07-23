@@ -66,13 +66,13 @@ export function UserMenu({
           ) : null}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <form action="/auth/signout" method="post" className="w-full">
-            <button type="submit" className="w-full text-left">
+        <form action="/auth/signout" method="post">
+          <DropdownMenuItem asChild variant="destructive">
+            <button type="submit" className="w-full">
               Sign out
             </button>
-          </form>
-        </DropdownMenuItem>
+          </DropdownMenuItem>
+        </form>
       </DropdownMenuContent>
     </DropdownMenu>
   );

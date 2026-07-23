@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type GalleryImage = {
@@ -39,13 +40,16 @@ export function CarGallery({
       {list.length > 1 ? (
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
           {list.map((img, i) => (
-            <button
+            <Button
               key={img.id}
               type="button"
+              variant="outline"
               onClick={() => setActive(i)}
               className={cn(
-                "bg-muted relative aspect-[4/3] overflow-hidden rounded-lg ring-offset-background focus-visible:ring-2 focus-visible:outline-none",
-                i === active ? "ring-primary ring-2" : "opacity-80 hover:opacity-100"
+                "bg-muted relative aspect-[4/3] h-auto overflow-hidden rounded-lg p-0",
+                i === active
+                  ? "ring-primary ring-2"
+                  : "opacity-80 hover:opacity-100"
               )}
               aria-label={`View image ${i + 1}`}
               aria-pressed={i === active}
@@ -57,7 +61,7 @@ export function CarGallery({
                 className="object-cover"
                 sizes="120px"
               />
-            </button>
+            </Button>
           ))}
         </div>
       ) : null}

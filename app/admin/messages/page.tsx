@@ -1,3 +1,10 @@
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   Table,
   TableBody,
@@ -25,41 +32,61 @@ export default async function AdminMessagesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
+        <p className="text-muted-foreground text-sm">
+          Contact form submissions from the marketing site.
+        </p>
+      </div>
       {messages.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No messages yet.</p>
+        <Empty className="border border-dashed p-6">
+          <EmptyHeader>
+            <EmptyTitle>No messages yet</EmptyTitle>
+            <EmptyDescription>
+              When customers use the contact page, their notes will show up
+              here.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
-        <div className="rounded-xl border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>When</TableHead>
-                <TableHead>From</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Message</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {messages.map((m) => (
-                <TableRow key={m.id}>
-                  <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
-                    {formatDateTime(m.created_at)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{m.name}</div>
-                    <div className="text-muted-foreground text-xs">
-                      {m.email}
-                    </div>
-                  </TableCell>
-                  <TableCell>{m.subject ?? "—"}</TableCell>
-                  <TableCell className="max-w-xs truncate text-sm">
-                    {m.message}
-                  </TableCell>
+        <Card className="overflow-hidden py-0">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>When</TableHead>
+                  <TableHead>From</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Message</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {messages.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                      {formatDateTime(m.created_at)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{m.name}</div>
+                      <div className="text-muted-foreground text-xs">
+                        <a
+                          href={`mailto:${m.email}`}
+                          className="underline-offset-4 hover:underline"
+                        >
+                          {m.email}
+                        </a>
+                      </div>
+                    </TableCell>
+                    <TableCell>{m.subject ?? "—"}</TableCell>
+                    <TableCell className="max-w-md text-sm whitespace-pre-wrap">
+                      {m.message}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

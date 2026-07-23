@@ -4,6 +4,7 @@ import {
   PaymentStatusBadge,
 } from "@/components/account/booking-status-badge";
 import { UnpaidBookingsQueue } from "@/components/admin/unpaid-bookings-queue";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,18 +13,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { parseAdminBookingFilters } from "@/lib/admin/booking-filters";
 import {
   listAdminBookings,
   listAdminUnpaidPending,
 } from "@/lib/admin/queries";
-import { CHECKOUT_HOLD_MINUTES } from "@/lib/constants";
+import {
+  BOOKING_STATUSES,
+  CHECKOUT_HOLD_MINUTES,
+  PAYMENT_STATUSES,
+} from "@/lib/constants";
 import { isSupabaseConfigured } from "@/lib/env";
 import { formatMoney } from "@/lib/format/currency";
 import { formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "Admin bookings" };
 
-export default async function AdminBookingsPage() {
+type Props = {
+  searchParams: Promise<{ status?: string; payment?: string }>;
+};
+
+export default async function AdminBookingsPage({ searchParams }: Props) {
   if (!isSupabaseConfigured()) {
     return (
       <p className="text-muted-foreground text-sm">
@@ -32,14 +42,27 @@ export default async function AdminBookingsPage() {
     );
   }
 
+  const sp = await searchParams;
+  const filters = parseAdminBookingFilters(sp);
+  const hasFilters = Boolean(filters.status || filters.paymentStatus);
+
   const [rows, unpaidQueue] = await Promise.all([
-    listAdminBookings(100),
+    listAdminBookings({
+      limit: 100,
+      status: filters.status,
+      paymentStatus: filters.paymentStatus,
+    }),
     listAdminUnpaidPending(50),
   ]);
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
+        <p className="text-muted-foreground text-sm">
+          Unpaid holds first, then the full booking list with filters.
+        </p>
+      </div>
 
       <section className="flex flex-col gap-3">
         <div>
@@ -60,7 +83,54 @@ export default async function AdminBookingsPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">All bookings</h2>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-tight">All bookings</h2>
+          {hasFilters ? (
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/admin/bookings">Clear filters</Link>
+            </Button>
+          ) : null}
+        </div>
+
+        <form
+          method="get"
+          className="flex flex-wrap items-end gap-3 rounded-xl border p-3"
+        >
+          <label className="flex min-w-[9rem] flex-1 flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Status</span>
+            <select
+              name="status"
+              defaultValue={filters.status ?? ""}
+              className="border-input bg-background h-9 rounded-lg border px-2.5 text-sm"
+            >
+              <option value="">All statuses</option>
+              {BOOKING_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex min-w-[9rem] flex-1 flex-col gap-1 text-sm">
+            <span className="text-muted-foreground">Payment</span>
+            <select
+              name="payment"
+              defaultValue={filters.paymentStatus ?? ""}
+              className="border-input bg-background h-9 rounded-lg border px-2.5 text-sm"
+            >
+              <option value="">All payments</option>
+              {PAYMENT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button type="submit" size="sm">
+            Apply
+          </Button>
+        </form>
+
         <div className="rounded-xl border">
           <Table>
             <TableHeader>
@@ -80,7 +150,9 @@ export default async function AdminBookingsPage() {
                     colSpan={6}
                     className="text-muted-foreground text-sm"
                   >
-                    No bookings yet.
+                    {hasFilters
+                      ? "No bookings match these filters."
+                      : "No bookings yet."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -98,7 +170,9 @@ export default async function AdminBookingsPage() {
                     <TableCell className="text-muted-foreground text-sm">
                       {formatDateTime(b.pickup_at)}
                     </TableCell>
-                    <TableCell>{formatMoney(b.total_cents)}</TableCell>
+                    <TableCell className="tabular-nums">
+                      {formatMoney(b.total_cents)}
+                    </TableCell>
                     <TableCell>
                       <BookingStatusBadge status={b.status} />
                     </TableCell>

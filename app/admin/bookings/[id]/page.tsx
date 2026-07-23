@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   BookingStatusBadge,
   PaymentStatusBadge,
 } from "@/components/account/booking-status-badge";
 import { ReconcilePaymentButton } from "@/components/admin/reconcile-payment-button";
+import { FormSelect } from "@/components/forms/form-select";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,6 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
 import { updateAdminBookingStatus } from "@/app/actions/admin-bookings";
 import { getAdminBookingById } from "@/lib/admin/queries";
 import { canAdminTransition } from "@/lib/bookings/lifecycle";
@@ -47,13 +51,18 @@ export default async function AdminBookingDetailPage({ params }: Props) {
 
   return (
     <div className="flex max-w-xl flex-col gap-6">
-      <div className="flex flex-wrap gap-2">
-        <BookingStatusBadge status={currentStatus} />
-        <PaymentStatusBadge status={booking.payment_status} />
+      <div>
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
+          <Link href="/admin/bookings">← Bookings</Link>
+        </Button>
+        <div className="flex flex-wrap gap-2">
+          <BookingStatusBadge status={currentStatus} />
+          <PaymentStatusBadge status={booking.payment_status} />
+        </div>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+          {booking.reference_code}
+        </h1>
       </div>
-      <h1 className="text-2xl font-semibold tracking-tight">
-        {booking.reference_code}
-      </h1>
       <Card>
         <CardHeader>
           <CardTitle>{booking.car?.name}</CardTitle>
@@ -74,51 +83,60 @@ export default async function AdminBookingDetailPage({ params }: Props) {
       </Card>
 
       {showReconcile ? (
-        <div className="flex flex-col gap-2 rounded-xl border p-4">
-          <p className="text-sm font-medium">Payment stuck unpaid?</p>
-          <p className="text-muted-foreground text-xs">
-            Pulls the Checkout Session from PayMongo and marks paid if a
-            successful payment exists (same path as the success-page reconcile).
-          </p>
-          <ReconcilePaymentButton bookingId={booking.id} className="w-fit" />
-        </div>
+        <Card>
+          <CardHeader className="gap-1">
+            <CardTitle className="text-base">Payment stuck unpaid?</CardTitle>
+            <CardDescription>
+              Pulls the Checkout Session from PayMongo and marks paid if a
+              successful payment exists (same path as the success-page
+              reconcile).
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ReconcilePaymentButton bookingId={booking.id} className="w-fit" />
+          </CardContent>
+        </Card>
       ) : null}
 
-      <form
-        action={updateAdminBookingStatus}
-        className="flex flex-col gap-3 rounded-xl border p-4"
-      >
-        <input type="hidden" name="id" value={booking.id} />
-        <label className="flex flex-col gap-1.5 text-sm">
-          Status
-          <select
-            name="status"
-            defaultValue={booking.status}
-            className="border-input bg-background h-8 rounded-lg border px-2.5"
-            disabled={statusOptions.length <= 1}
+      <Card>
+        <CardContent className="pt-0">
+          <form
+            action={updateAdminBookingStatus}
+            className="flex flex-col gap-3"
           >
-            {statusOptions.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="text-muted-foreground text-xs">
-          Allowed moves only. Payment status is not changed here.
-        </p>
-        <label className="flex flex-col gap-1.5 text-sm">
-          Admin note
-          <textarea
-            name="adminNote"
-            defaultValue={booking.admin_note ?? ""}
-            className="border-input bg-background min-h-20 rounded-lg border px-2.5 py-2"
-          />
-        </label>
-        <Button type="submit" className="w-fit">
-          Save
-        </Button>
-      </form>
+            <input type="hidden" name="id" value={booking.id} />
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="status">Status</FieldLabel>
+                <FormSelect
+                  id="status"
+                  name="status"
+                  defaultValue={booking.status}
+                  disabled={statusOptions.length <= 1}
+                  options={statusOptions.map((s) => ({
+                    value: s,
+                    label: s,
+                  }))}
+                />
+                <FieldDescription>
+                  Allowed moves only. Payment status is not changed here.
+                </FieldDescription>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="adminNote">Admin note</FieldLabel>
+                <Textarea
+                  id="adminNote"
+                  name="adminNote"
+                  defaultValue={booking.admin_note ?? ""}
+                />
+              </Field>
+            </FieldGroup>
+            <Button type="submit" className="w-fit">
+              Save
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

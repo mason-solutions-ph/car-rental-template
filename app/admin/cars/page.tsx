@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -26,40 +27,60 @@ export default async function AdminCarsPage() {
           <Link href="/admin/cars/new">Add car</Link>
         </Button>
       </div>
-      <div className="rounded-xl border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Class</TableHead>
-              <TableHead>Rate</TableHead>
-              <TableHead>Published</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {cars.map((car) => (
-              <TableRow key={car.id}>
-                <TableCell className="font-medium">{car.name}</TableCell>
-                <TableCell className="capitalize">{car.class}</TableCell>
-                <TableCell>{formatMoney(car.daily_rate_cents)}</TableCell>
-                <TableCell>
-                  <Badge variant={car.is_published ? "default" : "secondary"}>
-                    {car.is_published ? "Yes" : "No"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="capitalize">{car.status}</TableCell>
-                <TableCell>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/admin/cars/${car.id}/edit`}>Edit</Link>
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      {cars.length === 0 ? (
+        <div className="rounded-xl border border-dashed p-8 text-center">
+          <p className="text-sm font-medium">No cars yet</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Add a car to publish it on the fleet page.
+          </p>
+          {isSupabaseConfigured() ? (
+            <Button asChild size="sm" className="mt-4">
+              <Link href="/admin/cars/new">Add car</Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <Card className="overflow-hidden py-0">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Rate</TableHead>
+                  <TableHead>Published</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cars.map((car) => (
+                  <TableRow key={car.id}>
+                    <TableCell className="font-medium">{car.name}</TableCell>
+                    <TableCell className="capitalize">{car.class}</TableCell>
+                    <TableCell className="tabular-nums">
+                      {formatMoney(car.daily_rate_cents)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={car.is_published ? "default" : "secondary"}
+                      >
+                        {car.is_published ? "Yes" : "No"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="capitalize">{car.status}</TableCell>
+                    <TableCell>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/admin/cars/${car.id}/edit`}>Edit</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
       {!isSupabaseConfigured() ? (
         <p className="text-muted-foreground text-xs">
           Showing demo fleet. Live CRUD requires Supabase.

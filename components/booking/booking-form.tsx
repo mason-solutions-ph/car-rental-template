@@ -5,12 +5,19 @@ import {
   createBookingAndCheckout,
   type BookingActionState,
 } from "@/app/actions/bookings";
+import { FormSelect } from "@/components/forms/form-select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import { formatMoney } from "@/lib/format/currency";
 import type { Location } from "@/types";
 
@@ -46,6 +53,13 @@ export function BookingForm({
     initial
   );
 
+  const locationOptions = locations.map((l) => ({
+    value: l.id,
+    label: l.name,
+  }));
+  const defaultPickup = defaults.pickupLocationId ?? locations[0]?.id ?? "";
+  const defaultDropoff = defaults.dropoffLocationId ?? locations[0]?.id ?? "";
+
   return (
     <form action={action} className="flex flex-col gap-5">
       <input type="hidden" name="carId" value={carId} />
@@ -56,51 +70,39 @@ export function BookingForm({
         </Alert>
       ) : null}
 
-      <div className="rounded-xl border p-4">
-        <p className="font-medium">{carName}</p>
-        <p className="text-muted-foreground text-sm">
-          {formatMoney(dailyRateCents)} / day
-          {estimate
-            ? ` · ${estimate.rentalDays} day(s) · ${formatMoney(estimate.totalCents)} total`
-            : null}
-        </p>
-      </div>
+      <Card>
+        <CardHeader className="gap-1">
+          <CardTitle className="text-base">{carName}</CardTitle>
+          <CardDescription>
+            {formatMoney(dailyRateCents)} / day
+            {estimate
+              ? ` · ${estimate.rentalDays} day(s) · ${formatMoney(estimate.totalCents)} total`
+              : null}
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pickupLocationId">Pickup location</Label>
-          <select
+      <FieldGroup className="grid gap-4 sm:grid-cols-2">
+        <Field>
+          <FieldLabel htmlFor="pickupLocationId">Pickup location</FieldLabel>
+          <FormSelect
             id="pickupLocationId"
             name="pickupLocationId"
-            required
-            defaultValue={defaults.pickupLocationId ?? locations[0]?.id}
-            className="border-input bg-background h-8 rounded-lg border px-2.5 text-sm"
-          >
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="dropoffLocationId">Drop-off location</Label>
-          <select
+            defaultValue={defaultPickup}
+            options={locationOptions}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="dropoffLocationId">Drop-off location</FieldLabel>
+          <FormSelect
             id="dropoffLocationId"
             name="dropoffLocationId"
-            required
-            defaultValue={defaults.dropoffLocationId ?? locations[0]?.id}
-            className="border-input bg-background h-8 rounded-lg border px-2.5 text-sm"
-          >
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pickupDate">Pickup date</Label>
+            defaultValue={defaultDropoff}
+            options={locationOptions}
+          />
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="pickupDate">Pickup date</FieldLabel>
           <Input
             id="pickupDate"
             name="pickupDate"
@@ -108,9 +110,9 @@ export function BookingForm({
             required
             defaultValue={defaults.pickupDate}
           />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pickupTime">Pickup time</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="pickupTime">Pickup time</FieldLabel>
           <Input
             id="pickupTime"
             name="pickupTime"
@@ -118,9 +120,9 @@ export function BookingForm({
             required
             defaultValue={defaults.pickupTime ?? "10:00"}
           />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="dropoffDate">Drop-off date</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="dropoffDate">Drop-off date</FieldLabel>
           <Input
             id="dropoffDate"
             name="dropoffDate"
@@ -128,9 +130,9 @@ export function BookingForm({
             required
             defaultValue={defaults.dropoffDate}
           />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="dropoffTime">Drop-off time</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="dropoffTime">Drop-off time</FieldLabel>
           <Input
             id="dropoffTime"
             name="dropoffTime"
@@ -138,27 +140,27 @@ export function BookingForm({
             required
             defaultValue={defaults.dropoffTime ?? "10:00"}
           />
-        </div>
-      </div>
+        </Field>
+      </FieldGroup>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label htmlFor="driverFullName">Driver full name</Label>
+      <FieldGroup className="grid gap-4 sm:grid-cols-2">
+        <Field className="sm:col-span-2">
+          <FieldLabel htmlFor="driverFullName">Driver full name</FieldLabel>
           <Input id="driverFullName" name="driverFullName" required />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="driverPhone">Phone</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="driverPhone">Phone</FieldLabel>
           <Input id="driverPhone" name="driverPhone" required />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="driverLicenseNumber">License number</Label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="driverLicenseNumber">License number</FieldLabel>
           <Input id="driverLicenseNumber" name="driverLicenseNumber" required />
-        </div>
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label htmlFor="customerNote">Note (optional)</Label>
+        </Field>
+        <Field className="sm:col-span-2">
+          <FieldLabel htmlFor="customerNote">Note (optional)</FieldLabel>
           <Textarea id="customerNote" name="customerNote" rows={3} />
-        </div>
-      </div>
+        </Field>
+      </FieldGroup>
 
       <Button type="submit" size="lg" disabled={pending}>
         {pending ? <Spinner /> : null}

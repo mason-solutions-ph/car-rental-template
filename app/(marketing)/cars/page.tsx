@@ -1,9 +1,28 @@
 import Link from "next/link";
 import { CarGrid } from "@/components/cars/car-grid";
+import { FormSelect } from "@/components/forms/form-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   filtersToSearchParams,
   parseCarSearchParams,
@@ -20,6 +39,27 @@ export const metadata = {
   title: "Fleet",
   description: "Browse available rental cars",
 };
+
+function searchParamsToRecord(
+  sp: Record<string, string | string[] | undefined>
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(sp)) {
+    if (v == null) continue;
+    out[k] = Array.isArray(v) ? (v[0] ?? "") : v;
+  }
+  return out;
+}
+
+function pageHref(
+  sp: Record<string, string | string[] | undefined>,
+  page: number
+) {
+  const base = searchParamsToRecord(sp);
+  base.page = String(page);
+  if (page <= 1) delete base.page;
+  return `/cars?${new URLSearchParams(base).toString()}`;
+}
 
 export default async function CarsPage({ searchParams }: Props) {
   const sp = await searchParams;
@@ -46,73 +86,79 @@ export default async function CarsPage({ searchParams }: Props) {
 
       <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
         <aside className="h-fit lg:sticky lg:top-20">
-          <form className="flex flex-col gap-4 rounded-xl border p-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="q">Search</Label>
-              <Input
-                id="q"
-                name="q"
-                placeholder="Make or model"
-                defaultValue={filters.q ?? ""}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="location">Location</Label>
-              <select
-                id="location"
-                name="location"
-                defaultValue={filters.location ?? ""}
-                className="border-input bg-background h-8 rounded-lg border px-2.5 text-sm"
-              >
-                <option value="">Any</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={l.slug}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="class">Class</Label>
-              <select
-                id="class"
-                name="class"
-                defaultValue={filters.class?.[0] ?? ""}
-                className="border-input bg-background h-8 rounded-lg border px-2.5 text-sm"
-              >
-                <option value="">Any</option>
-                {CAR_CLASSES.map((c) => (
-                  <option key={c} value={c} className="capitalize">
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="sort">Sort</Label>
-              <select
-                id="sort"
-                name="sort"
-                defaultValue={filters.sort ?? "newest"}
-                className="border-input bg-background h-8 rounded-lg border px-2.5 text-sm"
-              >
-                <option value="newest">Newest</option>
-                <option value="price_asc">Price: low to high</option>
-                <option value="price_desc">Price: high to low</option>
-                <option value="name">Name</option>
-              </select>
-            </div>
-            <Button type="submit">Apply</Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/cars">Reset</Link>
-            </Button>
-          </form>
+          <Card>
+            <CardContent className="pt-0">
+              <form className="flex flex-col gap-4">
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="q">Search</FieldLabel>
+                    <Input
+                      id="q"
+                      name="q"
+                      placeholder="Make or model"
+                      defaultValue={filters.q ?? ""}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="location">Location</FieldLabel>
+                    <FormSelect
+                      id="location"
+                      name="location"
+                      defaultValue={filters.location ?? ""}
+                      options={[
+                        { value: "", label: "Any" },
+                        ...locations.map((l) => ({
+                          value: l.slug,
+                          label: l.name,
+                        })),
+                      ]}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="class">Class</FieldLabel>
+                    <FormSelect
+                      id="class"
+                      name="class"
+                      defaultValue={filters.class?.[0] ?? ""}
+                      options={[
+                        { value: "", label: "Any" },
+                        ...CAR_CLASSES.map((c) => ({
+                          value: c,
+                          label: c,
+                        })),
+                      ]}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="sort">Sort</FieldLabel>
+                    <FormSelect
+                      id="sort"
+                      name="sort"
+                      defaultValue={filters.sort ?? "newest"}
+                      options={[
+                        { value: "newest", label: "Newest" },
+                        { value: "price_asc", label: "Price: low to high" },
+                        { value: "price_desc", label: "Price: high to low" },
+                        { value: "name", label: "Name" },
+                      ]}
+                    />
+                  </Field>
+                </FieldGroup>
+                <Button type="submit">Apply</Button>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/cars">Reset</Link>
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </aside>
 
         <div className="flex flex-col gap-6">
           {filters.class?.length || filters.location || filters.q ? (
             <div className="flex flex-wrap gap-2">
-              {filters.q ? <Badge variant="secondary">“{filters.q}”</Badge> : null}
+              {filters.q ? (
+                <Badge variant="secondary">“{filters.q}”</Badge>
+              ) : null}
               {filters.class?.map((c) => (
                 <Badge key={c} variant="secondary" className="capitalize">
                   {c}
@@ -127,54 +173,41 @@ export default async function CarsPage({ searchParams }: Props) {
           {cars.length ? (
             <CarGrid cars={cars} hrefQuery={hrefQuery || undefined} />
           ) : (
-            <div className="rounded-xl border border-dashed p-10 text-center">
-              <p className="font-medium">No cars match these filters</p>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Try clearing filters or choosing another location.
-              </p>
-              <Button asChild className="mt-4" variant="outline">
-                <Link href="/cars">Clear filters</Link>
-              </Button>
-            </div>
+            <Empty className="border border-dashed p-10">
+              <EmptyHeader>
+                <EmptyTitle>No cars match these filters</EmptyTitle>
+                <EmptyDescription>
+                  Try clearing filters or choosing another location.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button asChild variant="outline">
+                  <Link href="/cars">Clear filters</Link>
+                </Button>
+              </EmptyContent>
+            </Empty>
           )}
 
           {totalPages > 1 ? (
-            <div className="flex items-center justify-center gap-2">
-              {page > 1 ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link
-                    href={`/cars?${new URLSearchParams({
-                      ...Object.fromEntries(
-                        Object.entries(sp).flatMap(([k, v]) =>
-                          v == null
-                            ? []
-                            : Array.isArray(v)
-                              ? v.map((x) => [k, x])
-                              : [[k, v]]
-                        )
-                      ),
-                      page: String(page - 1),
-                    }).toString()}`}
-                  >
-                    Previous
-                  </Link>
-                </Button>
-              ) : null}
-              <span className="text-muted-foreground text-sm">
-                Page {page} of {totalPages}
-              </span>
-              {page < totalPages ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link
-                    href={`/cars?${new URLSearchParams({
-                      page: String(page + 1),
-                    }).toString()}`}
-                  >
-                    Next
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
+            <Pagination>
+              <PaginationContent>
+                {page > 1 ? (
+                  <PaginationItem>
+                    <PaginationPrevious href={pageHref(sp, page - 1)} />
+                  </PaginationItem>
+                ) : null}
+                <PaginationItem>
+                  <span className="text-muted-foreground px-2 text-sm">
+                    Page {page} of {totalPages}
+                  </span>
+                </PaginationItem>
+                {page < totalPages ? (
+                  <PaginationItem>
+                    <PaginationNext href={pageHref(sp, page + 1)} />
+                  </PaginationItem>
+                ) : null}
+              </PaginationContent>
+            </Pagination>
           ) : null}
         </div>
       </div>
