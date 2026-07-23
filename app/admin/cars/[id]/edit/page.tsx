@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { CarForm } from "@/components/admin/car-form";
+import { OpsPageHeader } from "@/components/admin/ops-chrome";
 import { updateCar } from "@/app/actions/cars";
 import { getAdminCarById } from "@/lib/admin/queries";
 
@@ -14,7 +15,7 @@ export default async function EditCarPage({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Edit car</h1>
+      <OpsPageHeader eyebrow="Fleet" title="Edit car" />
       <CarForm
         car={car}
         action={async (fd) => {

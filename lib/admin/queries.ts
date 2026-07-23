@@ -1,4 +1,9 @@
 import { getFleetRepo } from "@/lib/data/get-fleet-repo";
+import {
+  bucketPaidByDay,
+  type AdminPaidDailyPoint,
+  type PaidRow,
+} from "@/lib/admin/revenue-series";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -139,6 +144,36 @@ export async function getAdminNavBadges(): Promise<AdminNavBadges> {
     openMessages: messagesRes.count ?? 0,
     demo: false,
   };
+}
+
+/** Daily paid-booking counts and revenue for the trailing N UTC days. */
+export async function getAdminPaidDailySeries(
+  days = 14
+): Promise<AdminPaidDailyPoint[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const fleet = await getFleetRepo();
+  if (fleet.mode === "demo") return [];
+
+  const supabase = await createClient();
+  const now = new Date();
+  const since = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) -
+      (days - 1) * 24 * 60 * 60 * 1000
+  );
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("paid_at, amount_paid_cents, total_cents")
+    .eq("payment_status", "paid")
+    .gte("paid_at", since.toISOString());
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return bucketPaidByDay((data ?? []) as PaidRow[], { days, now });
 }
 
 /** Confirmed or active pickups from now through the next N days. */

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ExpireHoldsButton } from "@/components/admin/expire-holds-button";
-import { UnpaidBookingsQueue } from "@/components/admin/unpaid-bookings-queue";
-import { AdminStatCard } from "@/components/admin/stat-card";
+import { OpsEyebrow, OpsPageHeader, OpsSectionHeader } from "@/components/admin/ops-chrome";
 import {
-  BookingStatusBadge,
-  PaymentStatusBadge,
-} from "@/components/account/booking-status-badge";
+  OpsBookingStatusBadge,
+  OpsPaymentStatusBadge,
+} from "@/components/admin/ops-status-badge";
+import { StatsTicker } from "@/components/admin/stats-ticker";
+import { UnpaidBookingsQueue } from "@/components/admin/unpaid-bookings-queue";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -17,149 +18,103 @@ import {
 } from "@/components/ui/table";
 import {
   getAdminDashboardStats,
+  getAdminPaidDailySeries,
   listAdminContactMessages,
   listAdminUnpaidPending,
   listAdminUpcomingPickups,
 } from "@/lib/admin/queries";
 import { CHECKOUT_HOLD_MINUTES } from "@/lib/constants";
-import { formatMoney } from "@/lib/format/currency";
 import { formatDateTime } from "@/lib/format/date";
 import { isSupabaseConfigured } from "@/lib/env";
 
 export const metadata = { title: "Admin" };
 
+const headClass =
+  "font-mono text-[11px] uppercase tracking-wider text-muted-foreground";
+
 export default async function AdminDashboardPage() {
   const stats = await getAdminDashboardStats();
   const live = isSupabaseConfigured() && !stats.demo;
 
-  const [unpaidQueue, upcoming, recentMessages] = live
+  const [unpaidQueue, upcoming, recentMessages, series] = live
     ? await Promise.all([
         listAdminUnpaidPending(25),
         listAdminUpcomingPickups(10, 7),
         listAdminContactMessages(3),
+        getAdminPaidDailySeries(14),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground text-sm">
-            {stats.demo
-              ? "Demo stats from local fleet data. Connect Supabase for live bookings."
-              : "Operational overview for fleet and bookings."}
-          </p>
-        </div>
-        {live ? (
-          <div className="flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="secondary">
-              <Link href="/admin/cars/new">Add car</Link>
-            </Button>
-            <Button asChild size="sm" variant="outline">
-              <Link href="/admin/bookings">All bookings</Link>
-            </Button>
-            <Button asChild size="sm" variant="outline">
-              <Link href="/admin/messages">Messages</Link>
-            </Button>
-          </div>
-        ) : null}
-      </div>
+      <OpsPageHeader
+        eyebrow="Overview"
+        title="Dashboard"
+        description={
+          stats.demo
+            ? "Demo stats from local fleet data. Connect Supabase for live bookings."
+            : "Operational overview for fleet and bookings."
+        }
+        actions={
+          live ? (
+            <>
+              <Button asChild size="sm" variant="secondary">
+                <Link href="/admin/cars/new">Add car</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/admin/bookings">All bookings</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/admin/messages">Messages</Link>
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <AdminStatCard
-          label="Unpaid pending"
-          value={String(stats.unpaidPending)}
-          hint={live ? "Checkout holds still open" : undefined}
-          href={
-            live
-              ? "/admin/bookings?status=pending&payment=unpaid"
-              : undefined
-          }
-        />
-        <AdminStatCard
-          label="Confirmed"
-          value={String(stats.confirmed)}
-          hint={
-            live && stats.active
-              ? `${stats.active} active rental${stats.active === 1 ? "" : "s"}`
-              : live
-                ? "Paid, not yet active"
-                : undefined
-          }
-          href={live ? "/admin/bookings?status=confirmed" : undefined}
-        />
-        <AdminStatCard
-          label="Paid this week"
-          value={String(stats.paidThisWeek)}
-          hint={
-            live
-              ? formatMoney(stats.revenueThisWeekCents)
-              : undefined
-          }
-          href={live ? "/admin/bookings?payment=paid" : undefined}
-        />
-        <AdminStatCard
-          label="Published cars"
-          value={String(stats.publishedCars)}
-          href="/admin/cars"
-        />
-      </div>
+      <StatsTicker stats={stats} series={series} live={live} />
 
       {live ? (
         <>
           <section className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight">
-                  Unpaid queue
-                  {unpaidQueue.length ? (
-                    <span className="text-muted-foreground ml-2 text-sm font-normal">
-                      ({unpaidQueue.length})
-                    </span>
-                  ) : null}
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  Pending checkouts still unpaid. Hold is{" "}
-                  {CHECKOUT_HOLD_MINUTES} minutes. Reconcile when a webhook
-                  lags.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <ExpireHoldsButton />
-                <Button asChild size="sm" variant="secondary">
-                  <Link href="/admin/bookings?status=pending&payment=unpaid">
-                    View all
-                  </Link>
-                </Button>
-              </div>
-            </div>
+            <OpsSectionHeader
+              eyebrow="Needs action"
+              tone="attention"
+              count={unpaidQueue.length}
+              description={`Pending checkouts still unpaid. Hold is ${CHECKOUT_HOLD_MINUTES} minutes. Reconcile when a webhook lags.`}
+              actions={
+                <>
+                  <ExpireHoldsButton />
+                  <Button asChild size="sm" variant="secondary">
+                    <Link href="/admin/bookings?status=pending&payment=unpaid">
+                      View all
+                    </Link>
+                  </Button>
+                </>
+              }
+            />
             <UnpaidBookingsQueue rows={unpaidQueue} />
           </section>
 
           <section className="flex flex-col gap-3">
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight">
-                Upcoming pickups
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Confirmed or active rentals in the next 7 days.
-              </p>
-            </div>
+            <OpsSectionHeader
+              eyebrow="Pickups · next 7 days"
+              description="Confirmed or active rentals due for pickup."
+            />
             {upcoming.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 No upcoming pickups in the next week.
               </p>
             ) : (
-              <div className="rounded-xl border">
+              <div className="overflow-hidden rounded-xl border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Car</TableHead>
-                      <TableHead>Pickup</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Payment</TableHead>
+                      <TableHead className={headClass}>Reference</TableHead>
+                      <TableHead className={headClass}>Car</TableHead>
+                      <TableHead className={headClass}>Pickup</TableHead>
+                      <TableHead className={headClass}>Status</TableHead>
+                      <TableHead className={headClass}>Payment</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -168,20 +123,20 @@ export default async function AdminDashboardPage() {
                         <TableCell>
                           <Link
                             href={`/admin/bookings/${b.id}`}
-                            className="font-medium underline-offset-4 hover:underline"
+                            className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
                           >
                             {b.reference_code}
                           </Link>
                         </TableCell>
                         <TableCell>{b.car_name ?? "—"}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
+                        <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
                           {formatDateTime(b.pickup_at)}
                         </TableCell>
                         <TableCell>
-                          <BookingStatusBadge status={b.status} />
+                          <OpsBookingStatusBadge status={b.status} />
                         </TableCell>
                         <TableCell>
-                          <PaymentStatusBadge status={b.payment_status} />
+                          <OpsPaymentStatusBadge status={b.payment_status} />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -192,24 +147,16 @@ export default async function AdminDashboardPage() {
           </section>
 
           <section className="flex flex-col gap-3">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight">
-                  Recent messages
-                  {stats.openMessages ? (
-                    <span className="text-muted-foreground ml-2 text-sm font-normal">
-                      ({stats.openMessages} total)
-                    </span>
-                  ) : null}
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  Latest contact form submissions.
-                </p>
-              </div>
-              <Button asChild size="sm" variant="outline">
-                <Link href="/admin/messages">All messages</Link>
-              </Button>
-            </div>
+            <OpsSectionHeader
+              eyebrow="Inbox"
+              count={stats.openMessages}
+              description="Latest contact form submissions."
+              actions={
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/admin/messages">All messages</Link>
+                </Button>
+              }
+            />
             {recentMessages.length === 0 ? (
               <p className="text-muted-foreground text-sm">No messages yet.</p>
             ) : (
@@ -218,7 +165,7 @@ export default async function AdminDashboardPage() {
                   <li key={m.id} className="flex flex-col gap-1 px-4 py-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="font-medium">{m.name}</span>
-                      <span className="text-muted-foreground text-xs">
+                      <span className="text-muted-foreground font-mono text-xs tabular-nums">
                         {formatDateTime(m.created_at)}
                       </span>
                     </div>
@@ -233,9 +180,10 @@ export default async function AdminDashboardPage() {
           </section>
         </>
       ) : (
-        <div className="rounded-xl border border-dashed p-6">
+        <div className="flex flex-col gap-1 rounded-xl border border-dashed p-6">
+          <OpsEyebrow>Demo mode</OpsEyebrow>
           <p className="text-sm font-medium">Live bookings need Supabase</p>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <p className="text-muted-foreground text-sm">
             Fleet KPIs above use demo data. Connect a project and run
             migrations to unlock the unpaid queue, pickups, and messages.
           </p>

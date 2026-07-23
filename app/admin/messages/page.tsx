@@ -1,3 +1,4 @@
+import { OpsPageHeader } from "@/components/admin/ops-chrome";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Empty,
@@ -19,6 +20,9 @@ import { formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "Contact messages" };
 
+const headClass =
+  "font-mono text-[11px] uppercase tracking-wider text-muted-foreground";
+
 export default async function AdminMessagesPage() {
   if (!isSupabaseConfigured()) {
     return (
@@ -32,12 +36,11 @@ export default async function AdminMessagesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
-        <p className="text-muted-foreground text-sm">
-          Contact form submissions from the marketing site.
-        </p>
-      </div>
+      <OpsPageHeader
+        eyebrow="Inbox"
+        title="Messages"
+        description="Contact form submissions from the marketing site."
+      />
       {messages.length === 0 ? (
         <Empty className="border border-dashed p-6">
           <EmptyHeader>
@@ -54,16 +57,16 @@ export default async function AdminMessagesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>When</TableHead>
-                  <TableHead>From</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Message</TableHead>
+                  <TableHead className={headClass}>When</TableHead>
+                  <TableHead className={headClass}>From</TableHead>
+                  <TableHead className={headClass}>Subject</TableHead>
+                  <TableHead className={headClass}>Message</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {messages.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell className="text-muted-foreground whitespace-nowrap text-sm">
+                    <TableCell className="text-muted-foreground font-mono text-xs whitespace-nowrap tabular-nums">
                       {formatDateTime(m.created_at)}
                     </TableCell>
                     <TableCell>

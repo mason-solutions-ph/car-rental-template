@@ -44,6 +44,7 @@ export function ExpireHoldsButton({
       variant={variant}
       disabled={pending}
       onClick={onClick}
+      className="border-attention/40 text-attention hover:text-attention"
     >
       {pending ? (
         <>

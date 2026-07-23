@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { updateLocation } from "@/app/actions/locations";
 import { LocationForm } from "@/components/admin/location-form";
+import { OpsPageHeader } from "@/components/admin/ops-chrome";
 import { getAdminLocationById } from "@/lib/admin/queries";
 
 type Props = { params: Promise<{ id: string }> };
@@ -14,7 +15,7 @@ export default async function EditLocationPage({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Edit location</h1>
+      <OpsPageHeader eyebrow="Pickup hubs" title="Edit location" />
       <LocationForm
         location={location}
         action={async (fd) => {

@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { OpsPageHeader, OpsSectionHeader } from "@/components/admin/ops-chrome";
 import {
-  BookingStatusBadge,
-  PaymentStatusBadge,
-} from "@/components/account/booking-status-badge";
+  OpsBookingStatusBadge,
+  OpsPaymentStatusBadge,
+} from "@/components/admin/ops-status-badge";
 import { UnpaidBookingsQueue } from "@/components/admin/unpaid-bookings-queue";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +29,9 @@ import { formatMoney } from "@/lib/format/currency";
 import { formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "Admin bookings" };
+
+const headClass =
+  "font-mono text-[11px] uppercase tracking-wider text-muted-foreground";
 
 type Props = {
   searchParams: Promise<{ status?: string; payment?: string }>;
@@ -57,47 +61,43 @@ export default async function AdminBookingsPage({ searchParams }: Props) {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
-        <p className="text-muted-foreground text-sm">
-          Unpaid holds first, then the full booking list with filters.
-        </p>
-      </div>
+      <OpsPageHeader
+        eyebrow="Bookings"
+        title="Bookings"
+        description="Unpaid holds first, then the full booking list with filters."
+      />
 
       <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            Unpaid queue
-            {unpaidQueue.length ? (
-              <span className="text-muted-foreground ml-2 text-sm font-normal">
-                ({unpaidQueue.length})
-              </span>
-            ) : null}
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Needs payment or reconcile. Checkout hold: {CHECKOUT_HOLD_MINUTES}
-            m.
-          </p>
-        </div>
+        <OpsSectionHeader
+          eyebrow="Needs action"
+          tone="attention"
+          count={unpaidQueue.length}
+          description={`Needs payment or reconcile. Checkout hold: ${CHECKOUT_HOLD_MINUTES}m.`}
+        />
         <UnpaidBookingsQueue rows={unpaidQueue} />
       </section>
 
       <section className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-tight">All bookings</h2>
-          {hasFilters ? (
-            <Button asChild size="sm" variant="ghost">
-              <Link href="/admin/bookings">Clear filters</Link>
-            </Button>
-          ) : null}
-        </div>
+        <OpsSectionHeader
+          eyebrow="All bookings"
+          count={rows.length}
+          actions={
+            hasFilters ? (
+              <Button asChild size="sm" variant="ghost">
+                <Link href="/admin/bookings">Clear filters</Link>
+              </Button>
+            ) : undefined
+          }
+        />
 
         <form
           method="get"
           className="flex flex-wrap items-end gap-3 rounded-xl border p-3"
         >
           <label className="flex min-w-[9rem] flex-1 flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">Status</span>
+            <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+              Status
+            </span>
             <select
               name="status"
               defaultValue={filters.status ?? ""}
@@ -112,7 +112,9 @@ export default async function AdminBookingsPage({ searchParams }: Props) {
             </select>
           </label>
           <label className="flex min-w-[9rem] flex-1 flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">Payment</span>
+            <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+              Payment
+            </span>
             <select
               name="payment"
               defaultValue={filters.paymentStatus ?? ""}
@@ -131,16 +133,16 @@ export default async function AdminBookingsPage({ searchParams }: Props) {
           </Button>
         </form>
 
-        <div className="rounded-xl border">
+        <div className="overflow-hidden rounded-xl border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Reference</TableHead>
-                <TableHead>Car</TableHead>
-                <TableHead>Pickup</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Payment</TableHead>
+                <TableHead className={headClass}>Reference</TableHead>
+                <TableHead className={headClass}>Car</TableHead>
+                <TableHead className={headClass}>Pickup</TableHead>
+                <TableHead className={headClass}>Total</TableHead>
+                <TableHead className={headClass}>Status</TableHead>
+                <TableHead className={headClass}>Payment</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -161,23 +163,23 @@ export default async function AdminBookingsPage({ searchParams }: Props) {
                     <TableCell>
                       <Link
                         href={`/admin/bookings/${b.id}`}
-                        className="font-medium underline-offset-4 hover:underline"
+                        className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
                       >
                         {b.reference_code}
                       </Link>
                     </TableCell>
                     <TableCell>{b.car_name ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
                       {formatDateTime(b.pickup_at)}
                     </TableCell>
-                    <TableCell className="tabular-nums">
+                    <TableCell className="font-mono text-[13px] tabular-nums">
                       {formatMoney(b.total_cents)}
                     </TableCell>
                     <TableCell>
-                      <BookingStatusBadge status={b.status} />
+                      <OpsBookingStatusBadge status={b.status} />
                     </TableCell>
                     <TableCell>
-                      <PaymentStatusBadge status={b.payment_status} />
+                      <OpsPaymentStatusBadge status={b.payment_status} />
                     </TableCell>
                   </TableRow>
                 ))

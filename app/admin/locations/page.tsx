@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OpsPageHeader } from "@/components/admin/ops-chrome";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,14 +17,17 @@ export default async function AdminLocationsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Locations</h1>
-        {isSupabaseConfigured() ? (
-          <Button asChild size="sm">
-            <Link href="/admin/locations/new">Add location</Link>
-          </Button>
-        ) : null}
-      </div>
+      <OpsPageHeader
+        eyebrow="Pickup hubs"
+        title="Locations"
+        actions={
+          isSupabaseConfigured() ? (
+            <Button asChild size="sm">
+              <Link href="/admin/locations/new">Add location</Link>
+            </Button>
+          ) : undefined
+        }
+      />
       {locations.length === 0 ? (
         <div className="rounded-xl border border-dashed p-8 text-center">
           <p className="text-sm font-medium">No locations yet</p>
@@ -53,7 +57,7 @@ export default async function AdminLocationsPage() {
                     loc.name
                   )}
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="font-mono text-xs">
                   {loc.city}
                   {loc.region ? `, ${loc.region}` : ""} · {loc.slug}
                   {!loc.is_published ? " · unpublished" : ""}

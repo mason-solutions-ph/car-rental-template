@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { OpsEyebrow } from "@/components/admin/ops-chrome";
 import { Button } from "@/components/ui/button";
 
 export default function AdminError({
@@ -16,7 +17,10 @@ export default function AdminError({
 
   return (
     <div className="flex flex-col gap-4 p-2">
-      <h2 className="text-lg font-semibold">Admin error</h2>
+      <div className="flex flex-col gap-1">
+        <OpsEyebrow tone="attention">Fault</OpsEyebrow>
+        <h2 className="text-lg font-semibold">Admin error</h2>
+      </div>
       <p className="text-muted-foreground text-sm">
         Something went wrong in the admin area. Try again or return to the
         dashboard.

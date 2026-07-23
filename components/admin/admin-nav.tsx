@@ -19,6 +19,7 @@ export type AdminNavLink = {
   href: string;
   label: string;
   badge?: number;
+  badgeTone?: "default" | "attention";
 };
 
 function isActive(pathname: string, href: string): boolean {
@@ -57,8 +58,18 @@ function NavLinks({
             <span>{l.label}</span>
             {l.badge != null && l.badge > 0 ? (
               <Badge
-                variant={active ? "default" : "secondary"}
-                className="h-5 min-w-5 justify-center px-1.5 tabular-nums"
+                variant={
+                  l.badgeTone === "attention"
+                    ? "outline"
+                    : active
+                      ? "default"
+                      : "secondary"
+                }
+                className={cn(
+                  "h-5 min-w-5 justify-center px-1.5 font-mono tabular-nums",
+                  l.badgeTone === "attention" &&
+                    "border-transparent bg-attention/15 text-attention"
+                )}
               >
                 {l.badge > 99 ? "99+" : l.badge}
               </Badge>

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { OpsEyebrow } from "@/components/admin/ops-chrome";
 import {
-  BookingStatusBadge,
-  PaymentStatusBadge,
-} from "@/components/account/booking-status-badge";
+  OpsBookingStatusBadge,
+  OpsPaymentStatusBadge,
+} from "@/components/admin/ops-status-badge";
 import { ReconcilePaymentButton } from "@/components/admin/reconcile-payment-button";
 import { FormSelect } from "@/components/forms/form-select";
 import { Button } from "@/components/ui/button";
@@ -56,28 +57,40 @@ export default async function AdminBookingDetailPage({ params }: Props) {
           <Link href="/admin/bookings">← Bookings</Link>
         </Button>
         <div className="flex flex-wrap gap-2">
-          <BookingStatusBadge status={currentStatus} />
-          <PaymentStatusBadge status={booking.payment_status} />
+          <OpsBookingStatusBadge status={currentStatus} />
+          <OpsPaymentStatusBadge status={booking.payment_status} />
         </div>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
+        <OpsEyebrow className="mt-3 block">Booking</OpsEyebrow>
+        <h1 className="font-mono text-2xl font-semibold tracking-tight">
           {booking.reference_code}
         </h1>
       </div>
       <Card>
         <CardHeader>
           <CardTitle>{booking.car?.name}</CardTitle>
-          <CardDescription>
+          <CardDescription className="font-mono text-xs tabular-nums">
             {formatDateTime(booking.pickup_at)} →{" "}
             {formatDateTime(booking.dropoff_at)}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2 text-sm">
-          <p>Total: {formatMoney(booking.total_cents)}</p>
-          <p className="text-muted-foreground break-all">
-            PayMongo session: {booking.paymongo_checkout_session_id ?? "—"}
+          <p>
+            Total:{" "}
+            <span className="font-mono tabular-nums">
+              {formatMoney(booking.total_cents)}
+            </span>
           </p>
           <p className="text-muted-foreground break-all">
-            Payment id: {booking.paymongo_payment_id ?? "—"}
+            PayMongo session:{" "}
+            <span className="font-mono text-xs">
+              {booking.paymongo_checkout_session_id ?? "—"}
+            </span>
+          </p>
+          <p className="text-muted-foreground break-all">
+            Payment id:{" "}
+            <span className="font-mono text-xs">
+              {booking.paymongo_payment_id ?? "—"}
+            </span>
           </p>
         </CardContent>
       </Card>
@@ -85,6 +98,7 @@ export default async function AdminBookingDetailPage({ params }: Props) {
       {showReconcile ? (
         <Card>
           <CardHeader className="gap-1">
+            <OpsEyebrow tone="attention">Payment stuck</OpsEyebrow>
             <CardTitle className="text-base">Payment stuck unpaid?</CardTitle>
             <CardDescription>
               Pulls the Checkout Session from PayMongo and marks paid if a

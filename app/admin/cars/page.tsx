@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OpsPageHeader } from "@/components/admin/ops-chrome";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,17 +17,23 @@ import { formatMoney } from "@/lib/format/currency";
 
 export const metadata = { title: "Admin cars" };
 
+const headClass =
+  "font-mono text-[11px] uppercase tracking-wider text-muted-foreground";
+
 export default async function AdminCarsPage() {
   const cars = await listAdminCars();
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Cars</h1>
-        <Button asChild size="sm">
-          <Link href="/admin/cars/new">Add car</Link>
-        </Button>
-      </div>
+      <OpsPageHeader
+        eyebrow="Fleet"
+        title="Cars"
+        actions={
+          <Button asChild size="sm">
+            <Link href="/admin/cars/new">Add car</Link>
+          </Button>
+        }
+      />
       {cars.length === 0 ? (
         <div className="rounded-xl border border-dashed p-8 text-center">
           <p className="text-sm font-medium">No cars yet</p>
@@ -45,11 +52,11 @@ export default async function AdminCarsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Rate</TableHead>
-                  <TableHead>Published</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className={headClass}>Name</TableHead>
+                  <TableHead className={headClass}>Class</TableHead>
+                  <TableHead className={headClass}>Rate</TableHead>
+                  <TableHead className={headClass}>Published</TableHead>
+                  <TableHead className={headClass}>Status</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -58,7 +65,7 @@ export default async function AdminCarsPage() {
                   <TableRow key={car.id}>
                     <TableCell className="font-medium">{car.name}</TableCell>
                     <TableCell className="capitalize">{car.class}</TableCell>
-                    <TableCell className="tabular-nums">
+                    <TableCell className="font-mono text-[13px] tabular-nums">
                       {formatMoney(car.daily_rate_cents)}
                     </TableCell>
                     <TableCell>
