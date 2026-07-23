@@ -44,7 +44,6 @@ export async function updateAdminBookingStatus(formData: FormData): Promise<void
     throw new Error(result.error);
   }
 
-  revalidatePath(`/admin/bookings/${id}`);
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");
 }
@@ -107,7 +106,6 @@ export async function reconcileAdminBooking(
     checkoutSessionId: booking.paymongo_checkout_session_id,
   });
 
-  revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");
 

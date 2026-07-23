@@ -28,9 +28,12 @@ const headClass =
 export function UnpaidBookingsQueue({
   rows,
   emptyMessage = "No unpaid pending bookings.",
+  onSelectBooking,
 }: {
   rows: AdminBookingListItem[];
   emptyMessage?: string;
+  /** When set, reference opens the manage sheet instead of navigating. */
+  onSelectBooking?: (booking: AdminBookingListItem) => void;
 }) {
   if (!rows.length) {
     return (
@@ -68,12 +71,22 @@ export function UnpaidBookingsQueue({
               return (
                 <TableRow key={b.id}>
                   <TableCell>
-                    <Link
-                      href={`/admin/bookings/${b.id}`}
-                      className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
-                    >
-                      {b.reference_code}
-                    </Link>
+                    {onSelectBooking ? (
+                      <button
+                        type="button"
+                        onClick={() => onSelectBooking(b)}
+                        className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
+                      >
+                        {b.reference_code}
+                      </button>
+                    ) : (
+                      <Link
+                        href={`/admin/bookings?booking=${b.id}`}
+                        className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
+                      >
+                        {b.reference_code}
+                      </Link>
+                    )}
                   </TableCell>
                   <TableCell>{b.car_name ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">

@@ -64,7 +64,6 @@ export async function updateLocation(
     .eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/admin/locations");
-  revalidatePath(`/admin/locations/${id}/edit`);
   revalidatePath("/locations");
   revalidatePath("/");
 }

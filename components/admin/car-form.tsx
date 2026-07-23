@@ -17,9 +17,11 @@ import type { Car } from "@/types";
 export function CarForm({
   car,
   action,
+  onSuccess,
 }: {
   car?: Car | null;
   action: (formData: FormData) => Promise<{ error?: string } | void>;
+  onSuccess?: () => void;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export function CarForm({
         setError(result.error);
         return;
       }
-      router.push("/admin/cars");
+      onSuccess?.();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save car.");
@@ -48,7 +50,7 @@ export function CarForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex max-w-xl flex-col gap-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>

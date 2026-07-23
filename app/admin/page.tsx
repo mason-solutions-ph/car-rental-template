@@ -59,7 +59,7 @@ export default async function AdminDashboardPage() {
           live ? (
             <>
               <Button asChild size="sm" variant="secondary">
-                <Link href="/admin/cars/new">Add car</Link>
+                <Link href="/admin/cars?new=1">Add car</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
                 <Link href="/admin/bookings">All bookings</Link>
@@ -122,7 +122,7 @@ export default async function AdminDashboardPage() {
                       <TableRow key={b.id}>
                         <TableCell>
                           <Link
-                            href={`/admin/bookings/${b.id}`}
+                            href={`/admin/bookings?booking=${b.id}`}
                             className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
                           >
                             {b.reference_code}

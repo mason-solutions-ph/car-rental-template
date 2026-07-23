@@ -38,10 +38,34 @@ export type AdminBookingListItem = {
   payment_status: PaymentStatus;
   total_cents: number;
   pickup_at: string;
+  dropoff_at: string;
   created_at: string;
+  admin_note: string | null;
   paymongo_checkout_session_id: string | null;
+  paymongo_payment_id: string | null;
   car_name: string | null;
 };
+
+const ADMIN_BOOKING_LIST_SELECT =
+  "id, reference_code, status, payment_status, total_cents, pickup_at, dropoff_at, created_at, admin_note, paymongo_checkout_session_id, paymongo_payment_id, car:cars(name)";
+
+function mapAdminBookingListRow(b: Record<string, unknown>): AdminBookingListItem {
+  return {
+    id: b.id as string,
+    reference_code: b.reference_code as string,
+    status: b.status as BookingStatus,
+    payment_status: b.payment_status as PaymentStatus,
+    total_cents: b.total_cents as number,
+    pickup_at: b.pickup_at as string,
+    dropoff_at: b.dropoff_at as string,
+    created_at: b.created_at as string,
+    admin_note: (b.admin_note as string | null) ?? null,
+    paymongo_checkout_session_id:
+      (b.paymongo_checkout_session_id as string | null) ?? null,
+    paymongo_payment_id: (b.paymongo_payment_id as string | null) ?? null,
+    car_name: (b.car as { name?: string } | null)?.name ?? null,
+  };
+}
 
 export type AdminBookingDetail = Booking & {
   car: { name: string | null; slug: string | null } | null;
@@ -193,9 +217,7 @@ export async function listAdminUpcomingPickups(
 
   const { data, error } = await supabase
     .from("bookings")
-    .select(
-      "id, reference_code, status, payment_status, total_cents, pickup_at, created_at, paymongo_checkout_session_id, car:cars(name)"
-    )
+    .select(ADMIN_BOOKING_LIST_SELECT)
     .in("status", ["confirmed", "active"])
     .gte("pickup_at", now.toISOString())
     .lte("pickup_at", until.toISOString())
@@ -207,18 +229,9 @@ export async function listAdminUpcomingPickups(
     return [];
   }
 
-  return (data ?? []).map((b) => ({
-    id: b.id as string,
-    reference_code: b.reference_code as string,
-    status: b.status as BookingStatus,
-    payment_status: b.payment_status as PaymentStatus,
-    total_cents: b.total_cents as number,
-    pickup_at: b.pickup_at as string,
-    created_at: b.created_at as string,
-    paymongo_checkout_session_id:
-      (b.paymongo_checkout_session_id as string | null) ?? null,
-    car_name: (b.car as { name?: string } | null)?.name ?? null,
-  }));
+  return (data ?? []).map((b) =>
+    mapAdminBookingListRow(b as Record<string, unknown>)
+  );
 }
 
 export async function listAdminCars(): Promise<Car[]> {
@@ -249,9 +262,7 @@ export async function listAdminBookings(
   const supabase = await createClient();
   let query = supabase
     .from("bookings")
-    .select(
-      "id, reference_code, status, payment_status, total_cents, pickup_at, created_at, paymongo_checkout_session_id, car:cars(name)"
-    )
+    .select(ADMIN_BOOKING_LIST_SELECT)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -265,18 +276,9 @@ export async function listAdminBookings(
     return [];
   }
 
-  return (data ?? []).map((b) => ({
-    id: b.id as string,
-    reference_code: b.reference_code as string,
-    status: b.status as BookingStatus,
-    payment_status: b.payment_status as PaymentStatus,
-    total_cents: b.total_cents as number,
-    pickup_at: b.pickup_at as string,
-    created_at: b.created_at as string,
-    paymongo_checkout_session_id:
-      (b.paymongo_checkout_session_id as string | null) ?? null,
-    car_name: (b.car as { name?: string } | null)?.name ?? null,
-  }));
+  return (data ?? []).map((b) =>
+    mapAdminBookingListRow(b as Record<string, unknown>)
+  );
 }
 
 /** Pending + unpaid bookings that still need payment or expire. */
