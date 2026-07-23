@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { defaultPostLoginPath } from "@/lib/auth/post-login-path";
 import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 import { loginSchema, signupSchema } from "@/lib/validations/auth";
@@ -31,7 +32,20 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: error.message };
 
-  redirect(safeRedirectPath(formData.get("next"), "/account/bookings"));
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let role: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    role = (profile?.role as string | null) ?? null;
+  }
+
+  redirect(safeRedirectPath(formData.get("next"), defaultPostLoginPath(role)));
 }
 
 export async function signupAction(
