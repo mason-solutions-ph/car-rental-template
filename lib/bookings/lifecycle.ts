@@ -339,5 +339,19 @@ export async function expireUnpaidForCar(
   return { ok: true, data: { expired } };
 }
 
+/**
+ * Expire every pending+unpaid hold older than CHECKOUT_HOLD_MINUTES.
+ * Used by cron and admin “expire now”.
+ */
+export async function expireAllStaleUnpaid(
+  store: BookingStore,
+  now: Date = new Date()
+): Promise<LifecycleResult<{ expired: number }>> {
+  const expired = await store.expireAllStaleUnpaid(
+    holdCutoff(now, CHECKOUT_HOLD_MINUTES)
+  );
+  return { ok: true, data: { expired } };
+}
+
 /** Re-export for callers that only need eligibility without a store. */
 export type { BookingRecord, PaymentStatus, BookingStatus };

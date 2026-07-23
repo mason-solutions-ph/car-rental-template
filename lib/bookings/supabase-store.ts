@@ -89,6 +89,23 @@ export function createSupabaseBookingStore(clients: {
       return data?.length ?? 0;
     },
 
+    async expireAllStaleUnpaid(olderThan) {
+      const sb = privileged();
+      if (!sb) throw new Error("BookingStore: no client for expireAllStaleUnpaid");
+      const { data, error } = await sb
+        .from("bookings")
+        .update({ payment_status: "expired" })
+        .eq("status", "pending")
+        .eq("payment_status", "unpaid")
+        .lt("created_at", olderThan.toISOString())
+        .select("id");
+      if (error) {
+        console.error("expireAllStaleUnpaid", error);
+        return 0;
+      }
+      return data?.length ?? 0;
+    },
+
     async insertPending(input: InsertPendingBookingInput) {
       const sb = readWrite();
       if (!sb) throw new Error("BookingStore: no client for insertPending");

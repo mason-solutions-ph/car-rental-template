@@ -3,6 +3,7 @@ import {
   BookingStatusBadge,
   PaymentStatusBadge,
 } from "@/components/account/booking-status-badge";
+import { ReconcilePaymentButton } from "@/components/admin/reconcile-payment-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,6 +40,10 @@ export default async function AdminBookingDetailPage({ params }: Props) {
   const statusOptions = BOOKING_STATUSES.filter((s) =>
     canAdminTransition(currentStatus, s)
   );
+  const showReconcile =
+    booking.payment_status === "unpaid" &&
+    booking.status === "pending" &&
+    Boolean(booking.paymongo_checkout_session_id);
 
   return (
     <div className="flex max-w-xl flex-col gap-6">
@@ -67,6 +72,17 @@ export default async function AdminBookingDetailPage({ params }: Props) {
           </p>
         </CardContent>
       </Card>
+
+      {showReconcile ? (
+        <div className="flex flex-col gap-2 rounded-xl border p-4">
+          <p className="text-sm font-medium">Payment stuck unpaid?</p>
+          <p className="text-muted-foreground text-xs">
+            Pulls the Checkout Session from PayMongo and marks paid if a
+            successful payment exists (same path as the success-page reconcile).
+          </p>
+          <ReconcilePaymentButton bookingId={booking.id} className="w-fit" />
+        </div>
+      ) : null}
 
       <form
         action={updateAdminBookingStatus}

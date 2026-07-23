@@ -91,19 +91,34 @@ export async function getAdminCarById(id: string): Promise<Car | null> {
   return fleet.getCarById(id);
 }
 
+export type ListAdminBookingsOptions = {
+  limit?: number;
+  status?: BookingStatus;
+  paymentStatus?: PaymentStatus;
+};
+
 export async function listAdminBookings(
-  limit = 100
+  limitOrOpts: number | ListAdminBookingsOptions = 100
 ): Promise<AdminBookingListItem[]> {
   if (!isSupabaseConfigured()) return [];
 
+  const opts: ListAdminBookingsOptions =
+    typeof limitOrOpts === "number" ? { limit: limitOrOpts } : limitOrOpts;
+  const limit = opts.limit ?? 100;
+
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("bookings")
     .select(
       "id, reference_code, status, payment_status, total_cents, pickup_at, created_at, paymongo_checkout_session_id, car:cars(name)"
     )
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  if (opts.status) query = query.eq("status", opts.status);
+  if (opts.paymentStatus) query = query.eq("payment_status", opts.paymentStatus);
+
+  const { data, error } = await query;
 
   if (error) {
     console.error(error);
@@ -122,6 +137,17 @@ export async function listAdminBookings(
       (b.paymongo_checkout_session_id as string | null) ?? null,
     car_name: (b.car as { name?: string } | null)?.name ?? null,
   }));
+}
+
+/** Pending + unpaid bookings that still need payment or expire. */
+export async function listAdminUnpaidPending(
+  limit = 50
+): Promise<AdminBookingListItem[]> {
+  return listAdminBookings({
+    limit,
+    status: "pending",
+    paymentStatus: "unpaid",
+  });
 }
 
 export async function getAdminBookingById(

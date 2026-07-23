@@ -6,6 +6,7 @@ import {
   createBooking,
   markPaid,
   expireUnpaidForCar,
+  expireAllStaleUnpaid,
   cancelBooking,
   holdCutoff,
 } from "@/lib/bookings/lifecycle";
@@ -297,5 +298,42 @@ describe("expireUnpaidForCar", () => {
     const result = await expireUnpaidForCar(store, "car-1", now);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data.expired).toBe(1);
+  });
+});
+
+describe("expireAllStaleUnpaid", () => {
+  it("expires stale holds across all cars", async () => {
+    const now = new Date("2026-08-01T12:00:00.000Z");
+    const older = holdCutoff(now);
+    older.setUTCMinutes(older.getUTCMinutes() - 5);
+    const store = createMemoryBookingStore({
+      bookings: [
+        booking({ id: "stale-a", car_id: "car-1", created_at: older.toISOString() }),
+        booking({ id: "stale-b", car_id: "car-2", created_at: older.toISOString() }),
+        booking({ id: "fresh", car_id: "car-1", created_at: now.toISOString() }),
+        booking({
+          id: "paid",
+          car_id: "car-2",
+          created_at: older.toISOString(),
+          payment_status: "paid",
+          status: "confirmed",
+        }),
+      ],
+    });
+    const result = await expireAllStaleUnpaid(store, now);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.expired).toBe(2);
+    expect(store.bookings.find((b) => b.id === "stale-a")?.payment_status).toBe(
+      "expired"
+    );
+    expect(store.bookings.find((b) => b.id === "stale-b")?.payment_status).toBe(
+      "expired"
+    );
+    expect(store.bookings.find((b) => b.id === "fresh")?.payment_status).toBe(
+      "unpaid"
+    );
+    expect(store.bookings.find((b) => b.id === "paid")?.payment_status).toBe(
+      "paid"
+    );
   });
 });

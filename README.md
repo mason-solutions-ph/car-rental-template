@@ -80,6 +80,26 @@ update public.profiles set role = 'admin' where id = '<your-user-uuid>';
 4. Abandon checkout → booking stays `unpaid`; open booking → **Pay now** retries Checkout
 5. Fake success URL without paying must **not** mark paid unless PayMongo session shows payments
 
+#### Admin: unpaid queue & reconcile
+
+- **Dashboard** and **Admin → Bookings** show an unpaid queue (pending + unpaid)
+- **Reconcile payment** pulls the PayMongo Checkout Session and marks paid if settled (use when webhooks lag)
+- **Expire stale holds** (dashboard) marks abandoned checkouts `payment_status=expired` after the hold window
+
+#### Cron: expire unpaid holds
+
+Unpaid pending bookings hold inventory for 30 minutes (`CHECKOUT_HOLD_MINUTES`). A scheduled job clears stale holds globally (not only when someone books the same car).
+
+1. Set `CRON_SECRET` in the environment (long random string)
+2. On Vercel, `vercel.json` runs `GET /api/cron/expire-unpaid` every 15 minutes with `Authorization: Bearer <CRON_SECRET>`
+3. Manual call:
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" https://your-domain/api/cron/expire-unpaid
+```
+
+Requires `SUPABASE_SERVICE_ROLE_KEY`. Locally you can use the admin **Expire stale holds** button instead of cron.
+
 ### Demo mode
 
 Without Supabase keys the site still renders the fleet from `lib/data/demo.ts`. Bookings/auth need a live project. Without `PAYMONGO_SECRET_KEY`, create booking saves as unpaid and redirects with `?demo=1`.

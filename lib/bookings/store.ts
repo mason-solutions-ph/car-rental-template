@@ -73,6 +73,8 @@ export type BookingStore = {
   }): Promise<boolean>;
   /** Mark stale pending+unpaid holds for this car as expired. Returns count. */
   expireUnpaidForCar(carId: string, olderThan: Date): Promise<number>;
+  /** Mark all stale pending+unpaid holds (any car) as expired. Returns count. */
+  expireAllStaleUnpaid(olderThan: Date): Promise<number>;
   insertPending(
     input: InsertPendingBookingInput
   ): Promise<

@@ -78,7 +78,18 @@ export function createMemoryBookingStore(
       for (const b of bookings) {
         if (b.car_id !== carId) continue;
         if (b.status !== "pending" || b.payment_status !== "unpaid") continue;
-        if (new Date(b.created_at) > olderThan) continue;
+        if (new Date(b.created_at) >= olderThan) continue;
+        b.payment_status = "expired";
+        n += 1;
+      }
+      return n;
+    },
+
+    async expireAllStaleUnpaid(olderThan) {
+      let n = 0;
+      for (const b of bookings) {
+        if (b.status !== "pending" || b.payment_status !== "unpaid") continue;
+        if (new Date(b.created_at) >= olderThan) continue;
         b.payment_status = "expired";
         n += 1;
       }
