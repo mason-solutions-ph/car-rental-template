@@ -142,8 +142,6 @@ export type CarFilters = {
   minPrice?: number; // centavos
   maxPrice?: number; // centavos
   location?: string; // slug or id
-  from?: string;
-  to?: string;
   sort?: "price_asc" | "price_desc" | "name" | "newest";
   page?: number;
   pageSize?: number;

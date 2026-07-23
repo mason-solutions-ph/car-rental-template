@@ -2,7 +2,7 @@ import {
   CANCEL_MIN_HOURS_BEFORE_PICKUP,
   CHECKOUT_HOLD_MINUTES,
 } from "@/lib/constants";
-import { isCarAvailableForRange } from "@/lib/cars/availability";
+import { holdCutoff } from "@/lib/bookings/hold-policy";
 import { quoteRental } from "@/lib/cars/pricing";
 import type { BookingStatus, PaymentStatus } from "@/types";
 import type {
@@ -10,6 +10,8 @@ import type {
   BookingStore,
   InsertPendingBookingInput,
 } from "@/lib/bookings/store";
+
+export { holdCutoff } from "@/lib/bookings/hold-policy";
 
 export type LifecycleResult<T = void> =
   | { ok: true; data: T }
@@ -89,10 +91,6 @@ export function canCustomerCancel(
   return false;
 }
 
-export function holdCutoff(now: Date, holdMinutes = CHECKOUT_HOLD_MINUTES): Date {
-  return new Date(now.getTime() - holdMinutes * 60 * 1000);
-}
-
 /**
  * Full create pipeline: expire stale holds for car → bookable check →
  * availability → quote → insert pending/unpaid.
@@ -112,10 +110,11 @@ export async function createBooking(
     holdCutoff(now, CHECKOUT_HOLD_MINUTES)
   );
 
-  const available = await isCarAvailableForRange(store, {
+  const available = await store.isCarAvailable({
     carId: intent.carId,
     pickupAt: intent.pickupAt,
     dropoffAt: intent.dropoffAt,
+    holdMinutes: CHECKOUT_HOLD_MINUTES,
   });
   if (!available) {
     return { ok: false, error: "Those dates are not available for this car." };

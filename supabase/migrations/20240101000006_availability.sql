@@ -1,3 +1,7 @@
+-- Inventory / checkout-hold rules must match lib/bookings/hold-policy.ts
+-- (bookingBlocksInventory + isActiveCheckoutHold). Case table:
+-- lib/bookings/hold-policy.test.ts
+-- Blocks when: confirmed|active; pending+paid; pending+unpaid within hold window.
 create or replace function public.car_is_available(
   p_car_id uuid,
   p_pickup timestamptz,

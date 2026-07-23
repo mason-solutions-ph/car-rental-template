@@ -1,4 +1,5 @@
-import { markBookingPaid } from "@/lib/bookings/mark-paid";
+import { applyPaidOutcome } from "@/lib/bookings/apply-paid-outcome";
+import { createPrivilegedBookingStore } from "@/lib/bookings/privileged-store";
 import {
   normalizeWebhookPaidEvent,
   type NormalizedPaidEvent,
@@ -13,7 +14,7 @@ export type WebhookHandleResult =
   | { ok: false; status: number; error: string };
 
 /**
- * Verify signature, normalize paid events, mark Booking paid.
+ * Verify signature, normalize paid events, apply mark paid via BookingStore.
  * Non-paid events are acknowledged without applying.
  */
 export async function handlePaymongoWebhook(
@@ -50,22 +51,22 @@ export async function handlePaymongoWebhook(
     return { ok: true, applied: false };
   }
 
-  const result = await markBookingPaid({
-    checkoutSessionId: paid.checkoutSessionId,
-    bookingId: paid.bookingId,
-    paymentId: paid.paymentId,
-    paymentIntentId: paid.paymentIntentId,
-    amountPaidCents: paid.amountPaidCents,
-  });
+  const store = createPrivilegedBookingStore();
+  const result = await applyPaidOutcome(store, paid);
 
-  if (!result.ok && result.reason === "not_found") {
+  if (!result.ok && result.code === "not_found") {
     // Acknowledge so PayMongo does not retry forever for unknown ids
     console.error("webhook paid event for unknown booking", paid);
     return { ok: true, applied: false, paid };
   }
 
-  if (!result.ok && result.reason === "conflict") {
+  if (!result.ok && result.code === "conflict") {
     console.error("webhook paid event conflict (cancelled/expired)", paid);
+    return { ok: true, applied: false, paid };
+  }
+
+  if (!result.ok) {
+    console.error("webhook apply paid failed", result);
     return { ok: true, applied: false, paid };
   }
 

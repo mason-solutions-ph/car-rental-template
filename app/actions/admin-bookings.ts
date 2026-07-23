@@ -3,11 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminBookingById } from "@/lib/admin/queries";
-import { runExpireStaleUnpaidHolds } from "@/lib/bookings/expire-unpaid";
-import { adminTransition } from "@/lib/bookings/lifecycle";
+import {
+  adminTransition,
+  expireAllStaleUnpaid,
+} from "@/lib/bookings/lifecycle";
+import { createPrivilegedBookingStore } from "@/lib/bookings/privileged-store";
 import { reconcileCheckoutPayment } from "@/lib/bookings/reconcile-payment";
 import { createSupabaseBookingStore } from "@/lib/bookings/supabase-store";
-import { isSupabaseConfigured } from "@/lib/env";
+import {
+  isServiceRoleConfigured,
+  isSupabaseConfigured,
+} from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 import type { BookingStatus } from "@/types";
 
@@ -142,20 +148,36 @@ export async function expireStaleUnpaidAction(): Promise<{
 }> {
   await requireAdmin();
 
-  const result = await runExpireStaleUnpaidHolds();
-  revalidatePath("/admin");
-  revalidatePath("/admin/bookings");
-
-  if (!result.ok) {
-    return { ok: false, message: result.error };
+  if (!isSupabaseConfigured()) {
+    return { ok: false, message: "Supabase is not configured." };
+  }
+  if (!isServiceRoleConfigured()) {
+    return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY is required." };
   }
 
-  return {
-    ok: true,
-    expired: result.expired,
-    message:
-      result.expired === 0
-        ? "No stale unpaid holds to expire."
-        : `Expired ${result.expired} unpaid hold${result.expired === 1 ? "" : "s"}.`,
-  };
+  try {
+    const store = createPrivilegedBookingStore();
+    const result = await expireAllStaleUnpaid(store);
+    revalidatePath("/admin");
+    revalidatePath("/admin/bookings");
+
+    if (!result.ok) {
+      return { ok: false, message: result.error };
+    }
+
+    const expired = result.data.expired;
+    return {
+      ok: true,
+      expired,
+      message:
+        expired === 0
+          ? "No stale unpaid holds to expire."
+          : `Expired ${expired} unpaid hold${expired === 1 ? "" : "s"}.`,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      message: e instanceof Error ? e.message : "Expire unpaid failed.",
+    };
+  }
 }

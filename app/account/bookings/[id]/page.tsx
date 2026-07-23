@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { cancelBooking, retryCheckout } from "@/app/actions/bookings";
 import { getSessionProfile } from "@/lib/auth/get-session-profile";
+import { customerBookingAffordances } from "@/lib/bookings/affordances";
 import { getMyBooking } from "@/lib/bookings/queries";
 import { formatMoney } from "@/lib/format/currency";
 import { formatDateTime } from "@/lib/format/date";
@@ -47,8 +48,7 @@ export default async function BookingDetailPage({
   const booking = await getMyBooking(session.user.id, id);
   if (!booking) notFound();
 
-  const unpaid =
-    booking.payment_status === "unpaid" && booking.status === "pending";
+  const { canPay, canCancel } = customerBookingAffordances(booking);
 
   return (
     <div className="flex max-w-xl flex-col gap-6">
@@ -104,7 +104,7 @@ export default async function BookingDetailPage({
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        {unpaid ? (
+        {canPay ? (
           <form
             action={async () => {
               "use server";
@@ -114,9 +114,7 @@ export default async function BookingDetailPage({
             <Button type="submit">Pay now</Button>
           </form>
         ) : null}
-        {(unpaid ||
-          (booking.payment_status === "paid" &&
-            booking.status === "confirmed")) && (
+        {canCancel ? (
           <form
             action={async () => {
               "use server";
@@ -127,7 +125,7 @@ export default async function BookingDetailPage({
               Cancel booking
             </Button>
           </form>
-        )}
+        ) : null}
         <Button asChild variant="ghost">
           <Link href="/account/bookings">All bookings</Link>
         </Button>

@@ -47,3 +47,41 @@ describe("filterDemoPublishedCars", () => {
     }
   });
 });
+
+/** Parity cases for FleetRepo filter interface (demo adapter). */
+describe("Fleet filter parity (demo)", () => {
+  it("price_desc is reverse of price_asc order by rate", async () => {
+    const repo = createDemoFleetRepo();
+    const asc = await repo.listPublishedCars({
+      sort: "price_asc",
+      pageSize: 50,
+    });
+    const desc = await repo.listPublishedCars({
+      sort: "price_desc",
+      pageSize: 50,
+    });
+    expect(desc.cars.map((c) => c.id)).toEqual(
+      [...asc.cars].reverse().map((c) => c.id)
+    );
+  });
+
+  it("transmission filter narrows set", async () => {
+    const repo = createDemoFleetRepo();
+    const all = await repo.listPublishedCars({ pageSize: 50 });
+    const auto = await repo.listPublishedCars({
+      transmission: "automatic",
+      pageSize: 50,
+    });
+    expect(auto.cars.length).toBeLessThanOrEqual(all.cars.length);
+    expect(auto.cars.every((c) => c.transmission === "automatic")).toBe(true);
+  });
+
+  it("minPrice in centavos excludes cheaper cars", async () => {
+    const repo = createDemoFleetRepo();
+    const page = await repo.listPublishedCars({
+      minPrice: 5_000_00,
+      pageSize: 50,
+    });
+    expect(page.cars.every((c) => c.daily_rate_cents >= 5_000_00)).toBe(true);
+  });
+});

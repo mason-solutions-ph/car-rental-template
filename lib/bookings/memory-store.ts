@@ -1,3 +1,4 @@
+import { bookingBlocksInventory } from "@/lib/bookings/hold-policy";
 import type {
   BookableCar,
   BookingRecord,
@@ -14,24 +15,6 @@ function overlaps(
   bEnd: string
 ): boolean {
   return new Date(aStart) < new Date(bEnd) && new Date(aEnd) > new Date(bStart);
-}
-
-function holdsInventory(
-  b: BookingRecord,
-  now: Date,
-  holdMinutes: number
-): boolean {
-  if (b.status === "confirmed" || b.status === "active") return true;
-  if (b.status === "pending" && b.payment_status === "paid") return true;
-  if (
-    b.status === "pending" &&
-    b.payment_status === "unpaid" &&
-    new Date(b.created_at).getTime() >
-      now.getTime() - holdMinutes * 60 * 1000
-  ) {
-    return true;
-  }
-  return false;
 }
 
 export type MemoryStoreSeed = {
@@ -68,7 +51,7 @@ export function createMemoryBookingStore(
         if (b.car_id !== carId) continue;
         if (excludeBookingId && b.id === excludeBookingId) continue;
         if (!overlaps(b.pickup_at, b.dropoff_at, pickupAt, dropoffAt)) continue;
-        if (holdsInventory(b, now, holdMinutes)) return false;
+        if (bookingBlocksInventory(b, now, holdMinutes)) return false;
       }
       return true;
     },

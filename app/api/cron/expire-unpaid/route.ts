@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { runExpireStaleUnpaidHolds } from "@/lib/bookings/expire-unpaid";
+import { expireAllStaleUnpaid } from "@/lib/bookings/lifecycle";
+import { createPrivilegedBookingStore } from "@/lib/bookings/privileged-store";
+import {
+  isServiceRoleConfigured,
+  isSupabaseConfigured,
+} from "@/lib/env";
 
 /**
  * Expire pending+unpaid checkout holds past CHECKOUT_HOLD_MINUTES.
@@ -23,15 +28,38 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await runExpireStaleUnpaidHolds();
-  if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      { error: "Supabase is not configured." },
+      { status: 500 }
+    );
+  }
+  if (!isServiceRoleConfigured()) {
+    return NextResponse.json(
+      { error: "SUPABASE_SERVICE_ROLE_KEY is required." },
+      { status: 500 }
+    );
   }
 
-  return NextResponse.json({
-    ok: true,
-    expired: result.expired,
-  });
+  try {
+    const store = createPrivilegedBookingStore();
+    const result = await expireAllStaleUnpaid(store);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
+    }
+    return NextResponse.json({
+      ok: true,
+      expired: result.data.expired,
+    });
+  } catch (e) {
+    return NextResponse.json(
+      {
+        error:
+          e instanceof Error ? e.message : "Expire unpaid failed.",
+      },
+      { status: 500 }
+    );
+  }
 }
 
 /** Allow POST for manual schedulers that prefer it. */

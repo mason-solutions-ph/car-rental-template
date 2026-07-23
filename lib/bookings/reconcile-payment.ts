@@ -1,4 +1,5 @@
-import { markBookingPaid } from "@/lib/bookings/mark-paid";
+import { applyPaidOutcome } from "@/lib/bookings/apply-paid-outcome";
+import { createPrivilegedBookingStore } from "@/lib/bookings/privileged-store";
 import { canReconcilePayment } from "@/lib/env";
 import { retrieveCheckoutSession } from "@/lib/paymongo/checkout";
 import { normalizeCheckoutSessionPaid } from "@/lib/paymongo/paid-event";
@@ -33,7 +34,8 @@ export async function reconcileCheckoutPayment(
       return { reconciled: false, reason: "not_paid_yet" };
     }
 
-    const result = await markBookingPaid({
+    const store = createPrivilegedBookingStore();
+    const result = await applyPaidOutcome(store, {
       checkoutSessionId: paid.checkoutSessionId ?? booking.checkoutSessionId,
       bookingId: paid.bookingId ?? booking.bookingId,
       paymentId: paid.paymentId,
@@ -42,9 +44,12 @@ export async function reconcileCheckoutPayment(
     });
 
     if (!result.ok) {
-      return { reconciled: false, reason: result.reason };
+      return {
+        reconciled: false,
+        reason: result.code ?? "error",
+      };
     }
-    return { reconciled: !result.alreadyPaid };
+    return { reconciled: !result.data.alreadyPaid };
   } catch (e) {
     console.error("reconcileCheckoutPayment failed", e);
     return { reconciled: false, reason: "error" };

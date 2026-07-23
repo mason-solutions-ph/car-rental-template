@@ -4,7 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { parseCarSearchParams } from "@/lib/cars/filters";
+import {
+  filtersToSearchParams,
+  parseCarSearchParams,
+} from "@/lib/cars/filters";
 import { getPublishedCars } from "@/lib/cars/queries";
 import { getPublishedLocations } from "@/lib/locations/queries";
 import { CAR_CLASSES } from "@/lib/constants";
@@ -26,11 +29,9 @@ export default async function CarsPage({ searchParams }: Props) {
     getPublishedLocations(),
   ]);
 
-  const q = new URLSearchParams();
-  if (filters.from) q.set("from", filters.from);
-  if (filters.to) q.set("to", filters.to);
-  if (filters.location) q.set("location", filters.location);
-  const hrefQuery = q.toString();
+  const hrefQuery = filtersToSearchParams({
+    location: filters.location,
+  }).toString();
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -86,26 +87,6 @@ export default async function CarsPage({ searchParams }: Props) {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="from">From</Label>
-                <Input
-                  id="from"
-                  name="from"
-                  type="date"
-                  defaultValue={filters.from ?? ""}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="to">To</Label>
-                <Input
-                  id="to"
-                  name="to"
-                  type="date"
-                  defaultValue={filters.to ?? ""}
-                />
-              </div>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="sort">Sort</Label>

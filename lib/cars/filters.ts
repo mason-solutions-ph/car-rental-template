@@ -39,8 +39,6 @@ export function parseCarSearchParams(
         ? Math.round(maxPricePesos * 100)
         : undefined,
     location: typeof sp.location === "string" ? sp.location : undefined,
-    from: typeof sp.from === "string" ? sp.from : undefined,
-    to: typeof sp.to === "string" ? sp.to : undefined,
     sort:
       sortRaw && SORTS.has(sortRaw)
         ? (sortRaw as CarFilters["sort"])
@@ -60,8 +58,6 @@ export function filtersToSearchParams(filters: CarFilters): URLSearchParams {
   if (filters.minPrice != null) p.set("minPrice", String(filters.minPrice / 100));
   if (filters.maxPrice != null) p.set("maxPrice", String(filters.maxPrice / 100));
   if (filters.location) p.set("location", filters.location);
-  if (filters.from) p.set("from", filters.from);
-  if (filters.to) p.set("to", filters.to);
   if (filters.sort && filters.sort !== "newest") p.set("sort", filters.sort);
   if (filters.page && filters.page > 1) p.set("page", String(filters.page));
   return p;
