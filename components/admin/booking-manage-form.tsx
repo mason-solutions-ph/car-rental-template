@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { CopyIcon } from "lucide-react";
+import { toast } from "sonner";
 import { updateAdminBookingStatus } from "@/app/actions/admin-bookings";
 import {
   OpsBookingStatusBadge,
@@ -21,6 +23,43 @@ import { BOOKING_STATUSES } from "@/lib/constants";
 import { formatMoney } from "@/lib/format/currency";
 import { formatDateTime } from "@/lib/format/date";
 import type { BookingStatus } from "@/types";
+
+async function copyText(label: string, value: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(`${label} copied`);
+  } catch {
+    toast.error("Could not copy to clipboard");
+  }
+}
+
+function CopyableMono({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null | undefined;
+}) {
+  const display = value ?? "—";
+  return (
+    <p className="text-muted-foreground flex items-start gap-1 break-all text-xs">
+      <span className="shrink-0">{label}:</span>
+      <span className="font-mono">{display}</span>
+      {value ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="size-6 shrink-0"
+          aria-label={`Copy ${label}`}
+          onClick={() => void copyText(label, value)}
+        >
+          <CopyIcon className="size-3" />
+        </Button>
+      ) : null}
+    </p>
+  );
+}
 
 export function BookingManageForm({
   booking,
@@ -49,12 +88,14 @@ export function BookingManageForm({
     const fd = new FormData(e.currentTarget);
     try {
       await updateAdminBookingStatus(fd);
+      toast.success("Booking updated");
       onSuccess?.();
       router.refresh();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not update booking."
-      );
+      const message =
+        err instanceof Error ? err.message : "Could not update booking.";
+      setError(message);
+      toast.error(message);
     } finally {
       setPending(false);
     }
@@ -79,18 +120,18 @@ export function BookingManageForm({
             {formatMoney(booking.total_cents)}
           </span>
         </p>
-        <p className="text-muted-foreground break-all text-xs">
-          PayMongo session:{" "}
-          <span className="font-mono">
-            {booking.paymongo_checkout_session_id ?? "—"}
-          </span>
-        </p>
-        <p className="text-muted-foreground break-all text-xs">
-          Payment id:{" "}
-          <span className="font-mono">
-            {booking.paymongo_payment_id ?? "—"}
-          </span>
-        </p>
+        <CopyableMono
+          label="Reference"
+          value={booking.reference_code}
+        />
+        <CopyableMono
+          label="PayMongo session"
+          value={booking.paymongo_checkout_session_id}
+        />
+        <CopyableMono
+          label="Payment id"
+          value={booking.paymongo_payment_id}
+        />
       </div>
 
       {showReconcile ? (

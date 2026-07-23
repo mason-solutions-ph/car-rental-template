@@ -1,6 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  CAR_IMAGE_BUCKET,
+  carImageObjectPath,
+  validateCarImageFile,
+} from "@/lib/admin/upload-image";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -46,4 +51,53 @@ export async function updateCar(id: string, formData: FormData) {
   if (error) return { error: error.message };
   revalidatePath("/admin/cars");
   revalidatePath("/cars");
+}
+
+/** Upload a hero image to Storage and return its public URL. */
+export async function uploadCarHeroImage(
+  formData: FormData
+): Promise<{ url?: string; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return {
+      error:
+        "Connect Supabase Storage to upload files, or paste an image URL instead.",
+    };
+  }
+  await requireAdmin();
+
+  const file = formData.get("file");
+  if (!(file instanceof File)) {
+    return { error: "Choose an image file." };
+  }
+
+  const validation = validateCarImageFile(file);
+  if (!validation.ok) return { error: validation.error };
+
+  const path = carImageObjectPath(validation.ext);
+  const supabase = await createClient();
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error: uploadError } = await supabase.storage
+    .from(CAR_IMAGE_BUCKET)
+    .upload(path, buffer, {
+      contentType: validation.contentType,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    const msg = uploadError.message.toLowerCase();
+    if (msg.includes("bucket") || msg.includes("not found")) {
+      return {
+        error:
+          "Storage bucket missing. Run the car-images storage migration, or paste a URL.",
+      };
+    }
+    return { error: uploadError.message };
+  }
+
+  const { data } = supabase.storage.from(CAR_IMAGE_BUCKET).getPublicUrl(path);
+  if (!data?.publicUrl) {
+    return { error: "Upload succeeded but public URL was not returned." };
+  }
+  return { url: data.publicUrl };
 }

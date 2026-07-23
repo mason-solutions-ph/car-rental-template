@@ -57,8 +57,9 @@ update public.profiles set role = 'admin' where id = '<your-user-uuid>';
 ### Supabase cloud
 
 1. Create a project at [supabase.com](https://supabase.com)
-2. Run migrations `20240101000001` … `09` then `seed.sql` (or `supabase db push`)
+2. Run migrations `20240101000001` … `11` then `seed.sql` (or `supabase db push`)
 3. Copy URL + anon key into `.env.local`
+4. Migration `11` creates the public `car-images` Storage bucket (admin upload / public read)
 
 
 ### PayMongo

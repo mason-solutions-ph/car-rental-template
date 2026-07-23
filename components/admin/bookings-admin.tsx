@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { CheckIcon, CopyIcon, SearchIcon } from "lucide-react";
+import { toast } from "sonner";
 import { BookingManageForm } from "@/components/admin/booking-manage-form";
 import { OpsPageHeader, OpsSectionHeader } from "@/components/admin/ops-chrome";
 import {
@@ -10,6 +12,7 @@ import {
 } from "@/components/admin/ops-status-badge";
 import { UnpaidBookingsQueue } from "@/components/admin/unpaid-bookings-queue";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetContent,
@@ -38,6 +41,42 @@ import type { BookingStatus, PaymentStatus } from "@/types";
 const headClass =
   "font-mono text-[11px] uppercase tracking-wider text-muted-foreground";
 
+async function copyText(label: string, value: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(`${label} copied`);
+  } catch {
+    toast.error("Could not copy to clipboard");
+  }
+}
+
+function CopyReferenceButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      className="size-7 shrink-0"
+      aria-label={`Copy reference ${code}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        void copyText("Reference", code).then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+    >
+      {copied ? (
+        <CheckIcon className="size-3.5" />
+      ) : (
+        <CopyIcon className="size-3.5" />
+      )}
+    </Button>
+  );
+}
+
 export function BookingsAdmin({
   rows,
   unpaidQueue,
@@ -59,6 +98,18 @@ export function BookingsAdmin({
   const [selected, setSelected] = useState<AdminBookingListItem | null>(
     initialBooking
   );
+  const [query, setQuery] = useState("");
+
+  const filteredRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((b) => {
+      const hay = [b.reference_code, b.car_name ?? "", b.status, b.payment_status]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [rows, query]);
 
   function openBooking(booking: AdminBookingListItem) {
     setSelected(booking);
@@ -92,7 +143,7 @@ export function BookingsAdmin({
       <section className="flex flex-col gap-3">
         <OpsSectionHeader
           eyebrow="All bookings"
-          count={rows.length}
+          count={filteredRows.length}
           actions={
             hasFilters ? (
               <Button asChild size="sm" variant="ghost">
@@ -145,6 +196,19 @@ export function BookingsAdmin({
           </Button>
         </form>
 
+        {rows.length > 0 ? (
+          <div className="relative max-w-sm">
+            <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search reference or car…"
+              className="pl-8"
+              aria-label="Search bookings"
+            />
+          </div>
+        ) : null}
+
         <div className="overflow-hidden rounded-xl border">
           <Table>
             <TableHeader>
@@ -169,17 +233,36 @@ export function BookingsAdmin({
                       : "No bookings yet."}
                   </TableCell>
                 </TableRow>
+              ) : filteredRows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="text-muted-foreground text-sm"
+                  >
+                    No bookings match “{query.trim()}”.
+                  </TableCell>
+                </TableRow>
               ) : (
-                rows.map((b) => (
-                  <TableRow key={b.id}>
+                filteredRows.map((b) => (
+                  <TableRow
+                    key={b.id}
+                    className="cursor-pointer"
+                    onClick={() => openBooking(b)}
+                  >
                     <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => openBooking(b)}
-                        className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
-                      >
-                        {b.reference_code}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openBooking(b);
+                          }}
+                          className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
+                        >
+                          {b.reference_code}
+                        </button>
+                        <CopyReferenceButton code={b.reference_code} />
+                      </div>
                     </TableCell>
                     <TableCell>{b.car_name ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
