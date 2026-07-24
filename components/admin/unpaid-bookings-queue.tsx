@@ -74,7 +74,7 @@ export function UnpaidBookingsQueue({
                       </button>
                     ) : (
                       <Link
-                        href={`/admin/bookings?booking=${b.id}`}
+                        href={`/admin/bookings/${b.id}`}
                         className="font-mono font-medium underline-offset-4 hover:underline"
                       >
                         {b.reference_code}

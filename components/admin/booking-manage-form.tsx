@@ -65,12 +65,31 @@ function CopyableMono({
   );
 }
 
+/** Minimal shape for status/reconcile form (list row or full detail). */
+export type BookingManageTarget = Pick<
+  AdminBookingListItem,
+  | "id"
+  | "reference_code"
+  | "status"
+  | "payment_status"
+  | "total_cents"
+  | "pickup_at"
+  | "dropoff_at"
+  | "admin_note"
+  | "paymongo_checkout_session_id"
+  | "paymongo_payment_id"
+  | "car_name"
+>;
+
 export function BookingManageForm({
   booking,
   onSuccess,
+  compact = false,
 }: {
-  booking: AdminBookingListItem;
+  booking: BookingManageTarget;
   onSuccess?: () => void;
+  /** Hide summary block when the parent page already shows the document. */
+  compact?: boolean;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -107,38 +126,51 @@ export function BookingManageForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        <OpsBookingStatusBadge status={currentStatus} />
-        <OpsPaymentStatusBadge status={booking.payment_status} />
-      </div>
+      {!compact ? (
+        <>
+          <div className="flex flex-wrap gap-2">
+            <OpsBookingStatusBadge status={currentStatus} />
+            <OpsPaymentStatusBadge status={booking.payment_status} />
+          </div>
 
-      <div className="flex flex-col gap-1 text-sm">
-        <p className="font-medium">
-          {booking.car_name ?? <OpsEmptyValue label="No car" />}
-        </p>
-        <p className="text-muted-foreground font-mono text-xs tabular-nums">
-          {formatDateTime(booking.pickup_at)} →{" "}
-          {formatDateTime(booking.dropoff_at)}
-        </p>
-        <p>
-          Total:{" "}
-          <span className="font-mono tabular-nums">
-            {formatMoney(booking.total_cents)}
-          </span>
-        </p>
-        <CopyableMono
-          label="Reference"
-          value={booking.reference_code}
-        />
-        <CopyableMono
-          label="PayMongo session"
-          value={booking.paymongo_checkout_session_id}
-        />
-        <CopyableMono
-          label="Payment id"
-          value={booking.paymongo_payment_id}
-        />
-      </div>
+          <div className="flex flex-col gap-1 text-sm">
+            <p className="font-medium">
+              {booking.car_name ?? <OpsEmptyValue label="No car" />}
+            </p>
+            <p className="text-muted-foreground font-mono text-xs tabular-nums">
+              {formatDateTime(booking.pickup_at)} →{" "}
+              {formatDateTime(booking.dropoff_at)}
+            </p>
+            <p>
+              Total:{" "}
+              <span className="font-mono tabular-nums">
+                {formatMoney(booking.total_cents)}
+              </span>
+            </p>
+            <CopyableMono label="Reference" value={booking.reference_code} />
+            <CopyableMono
+              label="PayMongo session"
+              value={booking.paymongo_checkout_session_id}
+            />
+            <CopyableMono
+              label="Payment id"
+              value={booking.paymongo_payment_id}
+            />
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col gap-1 text-sm">
+          <CopyableMono label="Reference" value={booking.reference_code} />
+          <CopyableMono
+            label="PayMongo session"
+            value={booking.paymongo_checkout_session_id}
+          />
+          <CopyableMono
+            label="Payment id"
+            value={booking.paymongo_payment_id}
+          />
+        </div>
+      )}
 
       {showReconcile ? (
         <>

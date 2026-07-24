@@ -6,11 +6,9 @@ import { usePathname } from "next/navigation";
 import {
   CalendarCheckIcon,
   CarIcon,
-  FileTextIcon,
   LayoutDashboardIcon,
-  MailIcon,
-  MapPinIcon,
   MenuIcon,
+  UsersIcon,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +25,6 @@ import { cn } from "@/lib/utils";
 /** Live counts the server passes down. The nav structure itself is static. */
 export type AdminNavBadges = {
   unpaidPending: number;
-  openMessages: number;
 };
 
 type NavItem = {
@@ -61,14 +58,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         badgeTone: "attention",
       },
       { href: "/admin/cars", label: "Cars", icon: CarIcon },
-      { href: "/admin/locations", label: "Locations", icon: MapPinIcon },
-      { href: "/admin/invoice", label: "Invoice", icon: FileTextIcon },
-      {
-        href: "/admin/messages",
-        label: "Messages",
-        icon: MailIcon,
-        badgeKey: "openMessages",
-      },
+      { href: "/admin/users", label: "Users", icon: UsersIcon },
     ],
   },
 ];

@@ -12,9 +12,7 @@ const ROOT: AdminCrumb = { href: "/admin", label: "Admin" };
 const SEGMENT_LABELS: Record<string, string> = {
   bookings: "Bookings",
   cars: "Cars",
-  locations: "Locations",
-  invoice: "Invoice",
-  messages: "Messages",
+  users: "Users",
   new: "New",
   edit: "Edit",
 };

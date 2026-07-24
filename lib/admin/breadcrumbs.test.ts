@@ -38,9 +38,7 @@ describe("buildAdminBreadcrumbs", () => {
     for (const [segment, label] of [
       ["bookings", "Bookings"],
       ["cars", "Cars"],
-      ["locations", "Locations"],
-      ["invoice", "Invoice"],
-      ["messages", "Messages"],
+      ["users", "Users"],
     ] as const) {
       expect(buildAdminBreadcrumbs(`/admin/${segment}`).title).toBe(label);
     }

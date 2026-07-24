@@ -1,99 +1,65 @@
 "use client";
+"use no memo";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { CheckIcon, CopyIcon, SearchIcon } from "lucide-react";
-import { toast } from "sonner";
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import {
+  type ColumnFiltersState,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type PaginationState,
+  type SortingState,
+  useReactTable,
+  type VisibilityState,
+} from "@tanstack/react-table";
+import { Search } from "lucide-react";
+
 import {
   AddOnsiteBookingDialog,
   type OnsiteCarOption,
 } from "@/components/admin/add-onsite-booking-dialog";
-import { BookingManageForm } from "@/components/admin/booking-manage-form";
-import { OpsEmptyValue } from "@/components/admin/ops-empty-value";
-import { OpsPanel } from "@/components/admin/ops-panel";
+import { bookingsColumns } from "@/components/admin/bookings/bookings-columns";
+import { BookingsTable } from "@/components/admin/bookings/bookings-table";
 import {
-  OpsSectionHeader,
-  opsTableHeadClass,
-} from "@/components/admin/ops-chrome";
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
-  OpsBookingStatusBadge,
-  OpsPaymentStatusBadge,
-} from "@/components/admin/ops-status-badge";
-import { UnpaidBookingsQueue } from "@/components/admin/unpaid-bookings-queue";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { AdminBookingListItem } from "@/lib/admin/queries";
 import {
   BOOKING_STATUSES,
   CHECKOUT_HOLD_MINUTES,
   PAYMENT_STATUSES,
 } from "@/lib/constants";
-import { formatMoney } from "@/lib/format/currency";
-import { formatDateTime } from "@/lib/format/date";
 import type { BookingStatus, PaymentStatus } from "@/types";
 
-const selectClass =
-  "border-input bg-background text-ui h-8 rounded-sm border px-2";
-
-const fieldLabelClass =
-  "text-muted-foreground text-label font-mono font-medium tracking-[0.14em] uppercase";
-
-async function copyText(label: string, value: string) {
-  try {
-    await navigator.clipboard.writeText(value);
-    toast.success(`${label} copied`);
-  } catch {
-    toast.error("Could not copy to clipboard");
-  }
-}
-
-function CopyReferenceButton({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      className="size-7 shrink-0"
-      aria-label={`Copy reference ${code}`}
-      onClick={(e) => {
-        e.stopPropagation();
-        void copyText("Reference", code).then(() => {
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1500);
-        });
-      }}
-    >
-      {copied ? (
-        <CheckIcon className="size-3.5" />
-      ) : (
-        <CopyIcon className="size-3.5" />
-      )}
-    </Button>
-  );
-}
-
+/**
+ * Studio Users-style bookings list: card shell, search, filters, TanStack table.
+ * Row open → /admin/bookings/[id] (invoice detail).
+ */
 export function BookingsAdmin({
   rows,
   unpaidQueue,
   filters,
-  initialBookingId = null,
   openOnsiteOnMount = false,
   onsiteCars = [],
   onsiteLocationId = "",
@@ -108,231 +74,248 @@ export function BookingsAdmin({
   onsiteLocationId?: string;
   onsiteLocationName?: string;
 }) {
-  const hasFilters = Boolean(filters.status || filters.paymentStatus);
-  const allForSheet = [...unpaidQueue, ...rows];
-  const initialBooking =
-    initialBookingId != null
-      ? (allForSheet.find((b) => b.id === initialBookingId) ?? null)
-      : null;
+  const router = useRouter();
+  const unpaidCount = unpaidQueue.length;
 
-  const [selected, setSelected] = useState<AdminBookingListItem | null>(
-    initialBooking
+  // Prefer full list; if server filtered empty, still show something useful
+  const data = rows;
+
+  const [rowSelection, setRowSelection] = React.useState({});
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "pickup", desc: true },
+  ]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    () => {
+      const initial: ColumnFiltersState = [];
+      if (filters.status) {
+        initial.push({ id: "status", value: filters.status });
+      }
+      if (filters.paymentStatus) {
+        initial.push({ id: "payment_status", value: filters.paymentStatus });
+      }
+      if (
+        filters.status === "pending" &&
+        filters.paymentStatus === "unpaid"
+      ) {
+        initial.push({ id: "needsAction", value: "needs" });
+      }
+      return initial;
+    }
   );
-  const [query, setQuery] = useState("");
-
-  const filteredRows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((b) => {
-      const hay = [b.reference_code, b.car_name ?? "", b.status, b.payment_status]
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({
+      search: false,
+      needsAction: false,
     });
-  }, [rows, query]);
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
-  function openBooking(booking: AdminBookingListItem) {
-    setSelected(booking);
-  }
+  const table = useReactTable({
+    data,
+    columns: bookingsColumns,
+    state: {
+      rowSelection,
+      sorting,
+      columnFilters,
+      columnVisibility,
+      pagination,
+    },
+    getRowId: (row) => row.id,
+    autoResetPageIndex: false,
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
-  function closeSheet() {
-    setSelected(null);
+  const searchQuery =
+    (table.getColumn("search")?.getFilterValue() as string | undefined) ?? "";
+  const statusFilter =
+    (table.getColumn("status")?.getFilterValue() as string | undefined) ??
+    "all";
+  const paymentFilter =
+    (table.getColumn("payment_status")?.getFilterValue() as
+      | string
+      | undefined) ?? "all";
+  const needsFilter =
+    (table.getColumn("needsAction")?.getFilterValue() as string | undefined) ===
+    "needs";
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
+  const visibleCount = table.getFilteredRowModel().rows.length;
+
+  function syncUrl(next: {
+    status?: string;
+    payment?: string;
+    needs?: boolean;
+  }) {
+    const params = new URLSearchParams();
+    if (next.needs) {
+      params.set("status", "pending");
+      params.set("payment", "unpaid");
+    } else {
+      if (next.status && next.status !== "all") {
+        params.set("status", next.status);
+      }
+      if (next.payment && next.payment !== "all") {
+        params.set("payment", next.payment);
+      }
+    }
+    const q = params.toString();
+    router.push(q ? `/admin/bookings?${q}` : "/admin/bookings");
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section aria-labelledby="ops-unpaid" className="flex flex-col gap-3">
-        <OpsSectionHeader
-          id="ops-unpaid"
-          title="Needs action"
-          tone="attention"
-          count={unpaidQueue.length}
-          description={`Needs payment or reconcile. Checkout hold: ${CHECKOUT_HOLD_MINUTES}m.`}
-        />
-        <UnpaidBookingsQueue
-          rows={unpaidQueue}
-          onSelectBooking={openBooking}
-        />
-      </section>
-
-      <section aria-labelledby="ops-all-bookings" className="flex flex-col gap-3">
-        <OpsSectionHeader
-          id="ops-all-bookings"
-          title="All bookings"
-          count={filteredRows.length}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <AddOnsiteBookingDialog
-                cars={onsiteCars}
-                locationId={onsiteLocationId}
-                locationName={onsiteLocationName}
-                defaultOpen={openOnsiteOnMount}
-              />
-              {hasFilters ? (
-                <Button asChild size="sm" variant="ghost">
-                  <Link href="/admin/bookings">Clear filters</Link>
-                </Button>
-              ) : null}
-            </div>
-          }
-        />
-
-        {/* Native selects, deliberately: this is a plain GET form and shadcn's
-            Select is a controlled Radix widget that would need hidden inputs to
-            keep submitting. Styled to match the console instead. */}
-        <OpsPanel className="p-3">
-          <form method="get" className="flex flex-wrap items-end gap-3">
-            <label className="flex min-w-[9rem] flex-1 flex-col gap-1">
-              <span className={fieldLabelClass}>Status</span>
-              <select
-                name="status"
-                defaultValue={filters.status ?? ""}
-                className={selectClass}
-              >
-                <option value="">All statuses</option>
-                {BOOKING_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex min-w-[9rem] flex-1 flex-col gap-1">
-              <span className={fieldLabelClass}>Payment</span>
-              <select
-                name="payment"
-                defaultValue={filters.paymentStatus ?? ""}
-                className={selectClass}
-              >
-                <option value="">All payments</option>
-                {PAYMENT_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Button type="submit" size="sm">
-              Apply
-            </Button>
-          </form>
-        </OpsPanel>
-
-        {rows.length > 0 ? (
-          <div className="relative max-w-sm">
-            <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search reference or carΓÇª"
-              className="pl-8"
-              aria-label="Search bookings"
+    <Card>
+      <CardHeader className="border-b has-data-[slot=card-action]:grid-cols-1 md:has-data-[slot=card-action]:grid-cols-[1fr_auto]">
+        <CardTitle className="text-xl leading-none">Bookings</CardTitle>
+        <CardDescription className="max-w-md leading-snug">
+          Manage rentals, payments, and checkout holds
+          {unpaidCount > 0
+            ? ` · ${unpaidCount} need action (hold ${CHECKOUT_HOLD_MINUTES}m)`
+            : null}
+          .
+        </CardDescription>
+        <CardAction className="col-start-1 row-start-auto flex w-full flex-wrap justify-start gap-2 justify-self-stretch md:col-start-2 md:row-span-2 md:row-start-1 md:w-auto md:flex-nowrap md:justify-end md:justify-self-end">
+          <InputGroup className="h-7 w-full md:w-64">
+            <InputGroupAddon align="inline-start">
+              <Search className="size-3.5" />
+            </InputGroupAddon>
+            <InputGroupInput
+              className="h-7"
+              placeholder="Search reference or car..."
+              value={searchQuery}
+              onChange={(event) => {
+                table
+                  .getColumn("search")
+                  ?.setFilterValue(event.target.value || undefined);
+                table.setPageIndex(0);
+              }}
             />
-          </div>
-        ) : null}
+          </InputGroup>
+          <AddOnsiteBookingDialog
+            cars={onsiteCars}
+            locationId={onsiteLocationId}
+            locationName={onsiteLocationName}
+            defaultOpen={openOnsiteOnMount}
+          />
+        </CardAction>
+      </CardHeader>
 
-        <OpsPanel>
-          <Table className="text-ui">
-            <TableHeader>
-              <TableRow>
-                <TableHead className={opsTableHeadClass}>Reference</TableHead>
-                <TableHead className={opsTableHeadClass}>Car</TableHead>
-                <TableHead className={opsTableHeadClass}>Pickup</TableHead>
-                <TableHead className={opsTableHeadClass}>Total</TableHead>
-                <TableHead className={opsTableHeadClass}>Status</TableHead>
-                <TableHead className={opsTableHeadClass}>Payment</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
-                    {hasFilters
-                      ? "No bookings match these filters."
-                      : "No bookings yet."}
-                  </TableCell>
-                </TableRow>
-              ) : filteredRows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
-                    No bookings match ΓÇ£{query.trim()}ΓÇ¥.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredRows.map((b) => (
-                  <TableRow
-                    key={b.id}
-                    className="cursor-pointer"
-                    onClick={() => openBooking(b)}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openBooking(b);
-                          }}
-                          className="font-mono font-medium underline-offset-4 hover:underline"
-                        >
-                          {b.reference_code}
-                        </button>
-                        <CopyReferenceButton code={b.reference_code} />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {b.car_name ?? <OpsEmptyValue label="No car" />}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
-                      {formatDateTime(b.pickup_at)}
-                    </TableCell>
-                    <TableCell className="font-mono tabular-nums">
-                      {formatMoney(b.total_cents)}
-                    </TableCell>
-                    <TableCell>
-                      <OpsBookingStatusBadge status={b.status} />
-                    </TableCell>
-                    <TableCell>
-                      <OpsPaymentStatusBadge status={b.payment_status} />
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </OpsPanel>
-      </section>
+      <CardContent className="flex flex-col gap-4 px-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <ToggleGroup
+              type="single"
+              size="sm"
+              value={needsFilter ? "needs" : "all"}
+              onValueChange={(value) => {
+                if (!value) return;
+                if (value === "needs") {
+                  table.getColumn("needsAction")?.setFilterValue("needs");
+                  table.getColumn("status")?.setFilterValue(undefined);
+                  table.getColumn("payment_status")?.setFilterValue(undefined);
+                  table.setPageIndex(0);
+                  syncUrl({ needs: true });
+                } else {
+                  table.getColumn("needsAction")?.setFilterValue(undefined);
+                  table.setPageIndex(0);
+                  syncUrl({
+                    status: statusFilter,
+                    payment: paymentFilter,
+                  });
+                }
+              }}
+              className="bg-muted p-0.75"
+            >
+              <ToggleGroupItem value="all" className="px-3">
+                All
+              </ToggleGroupItem>
+              <ToggleGroupItem value="needs" className="px-3">
+                Needs action
+                {unpaidCount > 0 ? ` (${unpaidCount})` : ""}
+              </ToggleGroupItem>
+            </ToggleGroup>
 
-      <Sheet
-        open={selected !== null}
-        onOpenChange={(open) => {
-          if (!open) closeSheet();
-        }}
-      >
-        <SheetContent
-          side="right"
-          className="w-full gap-0 overflow-y-auto sm:max-w-lg"
-        >
-          <SheetHeader className="border-b">
-            <SheetTitle className="font-mono tracking-tight">
-              {selected?.reference_code ?? "Booking"}
-            </SheetTitle>
-            <SheetDescription>
-              Update status, notes, or reconcile payment without leaving the
-              list.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="p-4">
-            {selected ? (
-              <BookingManageForm
-                key={selected.id}
-                booking={selected}
-                onSuccess={closeSheet}
-              />
-            ) : null}
+            <Select
+              value={statusFilter === undefined ? "all" : statusFilter}
+              onValueChange={(value) => {
+                if (!value) return;
+                table.getColumn("needsAction")?.setFilterValue(undefined);
+                table
+                  .getColumn("status")
+                  ?.setFilterValue(value === "all" ? undefined : value);
+                table.setPageIndex(0);
+                syncUrl({
+                  status: value,
+                  payment: paymentFilter,
+                });
+              }}
+            >
+              <SelectTrigger size="sm">
+                <span className="text-muted-foreground">Status:</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" align="start">
+                <SelectGroup>
+                  <SelectItem value="all">All</SelectItem>
+                  {BOOKING_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s} className="capitalize">
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={paymentFilter === undefined ? "all" : paymentFilter}
+              onValueChange={(value) => {
+                if (!value) return;
+                table.getColumn("needsAction")?.setFilterValue(undefined);
+                table
+                  .getColumn("payment_status")
+                  ?.setFilterValue(value === "all" ? undefined : value);
+                table.setPageIndex(0);
+                syncUrl({
+                  status: statusFilter,
+                  payment: value,
+                });
+              }}
+            >
+              <SelectTrigger size="sm">
+                <span className="text-muted-foreground">Payment:</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper" align="start">
+                <SelectGroup>
+                  <SelectItem value="all">All</SelectItem>
+                  {PAYMENT_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s} className="capitalize">
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
-        </SheetContent>
-      </Sheet>
-    </div>
+
+          <div className="text-muted-foreground text-sm tabular-nums">
+            {selectedCount > 0
+              ? `${selectedCount} selected`
+              : `${visibleCount} booking${visibleCount === 1 ? "" : "s"}`}
+          </div>
+        </div>
+
+        <BookingsTable table={table} />
+      </CardContent>
+    </Card>
   );
 }

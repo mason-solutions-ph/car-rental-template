@@ -45,19 +45,19 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-import { recentOrdersColumns } from "./recent-orders-table/columns";
+import { recentOrdersColumns } from "./recent-bookings-table/columns";
 import {
   formatOrderCount,
   formatSelectedOrderCount,
   preventPaginationNavigation,
-} from "./recent-orders-table/formatters";
+} from "./recent-bookings-table/formatters";
 import {
   type OrderFilter,
   type OrderRow,
   orderFilters,
-} from "./recent-orders-table/schema";
+} from "./recent-bookings-table/schema";
 
-export function RecentOrders({ rows }: { rows: OrderRow[] }) {
+export function RecentBookings({ rows }: { rows: OrderRow[] }) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(

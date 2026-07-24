@@ -1,3 +1,8 @@
+import { format } from "date-fns";
+import {
+  demoUsers,
+  type UserRow,
+} from "@/components/admin/users/data";
 import { getFleetRepo } from "@/lib/data/get-fleet-repo";
 import {
   bucketPaidByDay,
@@ -10,9 +15,10 @@ import type {
   Booking,
   BookingStatus,
   Car,
-  Location,
   PaymentStatus,
 } from "@/types";
+
+export type { UserRow };
 
 export type AdminDashboardStats = {
   publishedCars: number;
@@ -21,13 +27,11 @@ export type AdminDashboardStats = {
   active: number;
   paidThisWeek: number;
   revenueThisWeekCents: number;
-  openMessages: number;
   demo: boolean;
 };
 
 export type AdminNavBadges = {
   unpaidPending: number;
-  openMessages: number;
   demo: boolean;
 };
 
@@ -69,6 +73,9 @@ function mapAdminBookingListRow(b: Record<string, unknown>): AdminBookingListIte
 
 export type AdminBookingDetail = Booking & {
   car: { name: string | null; slug: string | null } | null;
+  pickup_location: { name: string | null; city: string | null } | null;
+  dropoff_location: { name: string | null; city: string | null } | null;
+  customer: { full_name: string | null } | null;
 };
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
@@ -83,7 +90,6 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       active: 0,
       paidThisWeek: 0,
       revenueThisWeekCents: 0,
-      openMessages: 0,
       demo: true,
     };
   }
@@ -93,13 +99,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   weekAgo.setDate(weekAgo.getDate() - 7);
   const weekAgoIso = weekAgo.toISOString();
 
-  const [
-    unpaidRes,
-    confirmedRes,
-    activeRes,
-    paidWeekRes,
-    messagesRes,
-  ] = await Promise.all([
+  const [unpaidRes, confirmedRes, activeRes, paidWeekRes] = await Promise.all([
     supabase
       .from("bookings")
       .select("*", { count: "exact", head: true })
@@ -118,9 +118,6 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
       .select("amount_paid_cents, total_cents")
       .eq("payment_status", "paid")
       .gte("paid_at", weekAgoIso),
-    supabase
-      .from("contact_messages")
-      .select("*", { count: "exact", head: true }),
   ]);
 
   const weekRows = paidWeekRes.data ?? [];
@@ -136,36 +133,29 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     active: activeRes.count ?? 0,
     paidThisWeek: weekRows.length,
     revenueThisWeekCents,
-    openMessages: messagesRes.count ?? 0,
     demo: false,
   };
 }
 
 export async function getAdminNavBadges(): Promise<AdminNavBadges> {
   if (!isSupabaseConfigured()) {
-    return { unpaidPending: 0, openMessages: 0, demo: true };
+    return { unpaidPending: 0, demo: true };
   }
 
   const fleet = await getFleetRepo();
   if (fleet.mode === "demo") {
-    return { unpaidPending: 0, openMessages: 0, demo: true };
+    return { unpaidPending: 0, demo: true };
   }
 
   const supabase = await createClient();
-  const [unpaidRes, messagesRes] = await Promise.all([
-    supabase
-      .from("bookings")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending")
-      .eq("payment_status", "unpaid"),
-    supabase
-      .from("contact_messages")
-      .select("*", { count: "exact", head: true }),
-  ]);
+  const unpaidRes = await supabase
+    .from("bookings")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending")
+    .eq("payment_status", "unpaid");
 
   return {
     unpaidPending: unpaidRes.count ?? 0,
-    openMessages: messagesRes.count ?? 0,
     demo: false,
   };
 }
@@ -300,7 +290,15 @@ export async function getAdminBookingById(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("bookings")
-    .select("*, car:cars(name, slug)")
+    .select(
+      [
+        "*",
+        "car:cars(name, slug)",
+        "pickup_location:locations!pickup_location_id(name, city)",
+        "dropoff_location:locations!dropoff_location_id(name, city)",
+        "customer:profiles!customer_id(full_name)",
+      ].join(", ")
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -309,46 +307,69 @@ export async function getAdminBookingById(
     return null;
   }
 
-  return data as AdminBookingDetail;
+  const row = data as unknown as Record<string, unknown>;
+  return {
+    ...(row as unknown as Booking),
+    car: unwrapRel(row.car) as AdminBookingDetail["car"],
+    pickup_location: unwrapRel(
+      row.pickup_location
+    ) as AdminBookingDetail["pickup_location"],
+    dropoff_location: unwrapRel(
+      row.dropoff_location
+    ) as AdminBookingDetail["dropoff_location"],
+    customer: unwrapRel(row.customer) as AdminBookingDetail["customer"],
+  };
 }
 
-export async function listAdminLocations(): Promise<Location[]> {
+function unwrapRel<T>(value: unknown): T | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return (value[0] as T) ?? null;
+  return value as T;
+}
+
+/**
+ * Users table for /admin/users.
+ * Live: maps profiles (admin RLS). Email lives on auth.users — show phone as contact when present.
+ * Demo: Studio Admin seed list so the UI is fully browsable offline.
+ */
+export async function listAdminUsers(): Promise<UserRow[]> {
+  if (!isSupabaseConfigured()) {
+    return demoUsers;
+  }
+
   const fleet = await getFleetRepo();
-  return fleet.listAllLocations();
-}
-
-export async function getAdminLocationById(
-  id: string
-): Promise<Location | null> {
-  const fleet = await getFleetRepo();
-  const all = await fleet.listAllLocations();
-  return all.find((l) => l.id === id) ?? null;
-}
-
-export type AdminContactMessage = {
-  id: string;
-  name: string;
-  email: string;
-  subject: string | null;
-  message: string;
-  created_at: string;
-};
-
-export async function listAdminContactMessages(
-  limit = 50
-): Promise<AdminContactMessage[]> {
-  if (!isSupabaseConfigured()) return [];
+  if (fleet.mode === "demo") {
+    return demoUsers;
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("contact_messages")
-    .select("id, name, email, subject, message, created_at")
+    .from("profiles")
+    .select("id, full_name, phone, role, created_at, updated_at")
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(200);
 
   if (error) {
     console.error(error);
-    return [];
+    return demoUsers;
   }
-  return (data ?? []) as AdminContactMessage[];
+
+  if (!data?.length) {
+    return demoUsers;
+  }
+
+  return data.map((p): UserRow => {
+    const name = p.full_name?.trim() || "User";
+    const isAdmin = p.role === "admin";
+    const joined = new Date(p.created_at);
+    return {
+      id: p.id,
+      name,
+      contact: p.phone?.trim() || `${p.id.slice(0, 8)}…`,
+      role: isAdmin ? "Admin" : "Customer",
+      joinedDate: format(joined, "dd MMM yyyy, h:mm a"),
+      joinedAt: joined.getTime(),
+    };
+  });
 }
+

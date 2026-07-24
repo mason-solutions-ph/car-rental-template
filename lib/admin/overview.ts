@@ -23,6 +23,10 @@ export type OverviewKpi = {
   deltaLabel: string;
   deltaPositive: boolean | null;
   hint: string;
+  /** When set, card links out (e.g. unpaid queue). */
+  href?: string;
+  /** Amber emphasis for operational urgency. */
+  attention?: boolean;
 };
 
 export type OverviewChartPoint = {
@@ -65,14 +69,6 @@ export type OverviewFleetInventory = {
   availablePercent: number;
 };
 
-export type OverviewMessage = {
-  id: string;
-  name: string;
-  subject: string | null;
-  message: string;
-  createdAt: string;
-};
-
 export type OverviewBookingRow = {
   id: string;
   reference: string;
@@ -93,9 +89,9 @@ export type AdminOverview = {
   kpis: {
     revenue: OverviewKpi;
     bookings: OverviewKpi;
+    unpaid: OverviewKpi;
     customers: OverviewKpi;
     average: OverviewKpi;
-    cancelled: OverviewKpi;
     fleetAvailable: OverviewKpi;
   };
   revenueSeries: OverviewChartPoint[];
@@ -106,7 +102,6 @@ export type AdminOverview = {
   categories: OverviewCategoryShare[];
   topCars: OverviewTopCar[];
   fleet: OverviewFleetInventory;
-  messages: OverviewMessage[];
   recentBookings: OverviewBookingRow[];
 };
 
@@ -155,7 +150,12 @@ function unwrapCar(car: CreatedBookingRow["car"]): CarRel | null {
   return Array.isArray(car) ? (car[0] ?? null) : car;
 }
 
-function emptyKpi(label: string, value = "0", hint = "vs prior period"): OverviewKpi {
+function emptyKpi(
+  label: string,
+  value = "0",
+  hint = "vs prior period",
+  extras?: Pick<OverviewKpi, "href" | "attention">
+): OverviewKpi {
   return {
     label,
     value,
@@ -163,6 +163,7 @@ function emptyKpi(label: string, value = "0", hint = "vs prior period"): Overvie
     deltaLabel: "—",
     deltaPositive: null,
     hint,
+    ...extras,
   };
 }
 
@@ -171,7 +172,8 @@ function kpiFrom(
   value: string,
   raw: number,
   delta: number | null,
-  hint: string
+  hint: string,
+  extras?: Pick<OverviewKpi, "href" | "attention">
 ): OverviewKpi {
   return {
     label,
@@ -180,6 +182,7 @@ function kpiFrom(
     deltaLabel: formatDeltaPct(delta),
     deltaPositive: delta === null ? null : delta >= 0,
     hint,
+    ...extras,
   };
 }
 
@@ -242,9 +245,12 @@ function emptyOverview(period: OverviewPeriod, cars: Car[]): AdminOverview {
     kpis: {
       revenue: emptyKpi("Total revenue", formatMoney(0)),
       bookings: emptyKpi("Bookings"),
+      unpaid: emptyKpi("Unpaid holds", "0", "checkout holds", {
+        attention: false,
+        href: "/admin/bookings?status=pending&payment=unpaid",
+      }),
       customers: emptyKpi("Customers"),
       average: emptyKpi("Average booking", formatMoney(0)),
-      cancelled: emptyKpi("Cancellations"),
       fleetAvailable: kpiFrom(
         "Fleet available",
         `${fleet.availablePercent}%`,
@@ -269,7 +275,6 @@ function emptyOverview(period: OverviewPeriod, cars: Car[]): AdminOverview {
     categories,
     topCars,
     fleet,
-    messages: [],
     recentBookings: [],
   };
 }
@@ -340,7 +345,7 @@ export async function getAdminOverview(
   const seriesSince = new Date(now);
   seriesSince.setUTCDate(seriesSince.getUTCDate() - 90);
 
-  const [paidRes, createdRes, messagesRes, recentRes] = await Promise.all([
+  const [paidRes, createdRes, recentRes, unpaidRes] = await Promise.all([
     supabase
       .from("bookings")
       .select("paid_at, amount_paid_cents, total_cents, customer_id, car_id")
@@ -354,23 +359,23 @@ export async function getAdminOverview(
       .gte("created_at", seriesSince.toISOString())
       .order("created_at", { ascending: false }),
     supabase
-      .from("contact_messages")
-      .select("id, name, subject, message, created_at")
-      .order("created_at", { ascending: false })
-      .limit(8),
-    supabase
       .from("bookings")
       .select(
         "id, created_at, status, payment_status, total_cents, amount_paid_cents, customer_id, car_id, reference_code, driver_full_name, rental_days, car:cars(name, class)"
       )
       .order("created_at", { ascending: false })
       .limit(50),
+    supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending")
+      .eq("payment_status", "unpaid"),
   ]);
 
   if (paidRes.error) console.error(paidRes.error);
   if (createdRes.error) console.error(createdRes.error);
-  if (messagesRes.error) console.error(messagesRes.error);
   if (recentRes.error) console.error(recentRes.error);
+  if (unpaidRes.error) console.error(unpaidRes.error);
 
   const paidAll = (paidRes.data ?? []) as PaidBookingRow[];
   const createdAll = (createdRes.data ?? []) as CreatedBookingRow[];
@@ -404,8 +409,7 @@ export async function getAdminOverview(
   const prevAvg =
     paidPrev.length > 0 ? Math.round(prevRevenue / paidPrev.length) : 0;
 
-  const cancelled = createdPeriod.filter((r) => r.status === "cancelled").length;
-  const prevCancelled = createdPrev.filter((r) => r.status === "cancelled").length;
+  const unpaidPending = unpaidRes.count ?? 0;
 
   const fleet = fleetInventory(cars);
 
@@ -496,22 +500,6 @@ export async function getAdminOverview(
   const activitySeries = buildActivitySeries(createdAll, 30, now);
   const activityTotal = activitySeries.reduce((s, p) => s + p.bookings, 0);
 
-  const messages: OverviewMessage[] = (messagesRes.data ?? []).map(
-    (m: {
-      id: string;
-      name: string;
-      subject: string | null;
-      message: string;
-      created_at: string;
-    }) => ({
-      id: m.id,
-      name: m.name,
-      subject: m.subject,
-      message: m.message,
-      createdAt: m.created_at,
-    })
-  );
-
   const recentBookings: OverviewBookingRow[] = recentAll.map((b) => ({
     id: b.id,
     reference: b.reference_code,
@@ -558,12 +546,16 @@ export async function getAdminOverview(
         percentChange(avgOrder, prevAvg),
         "paid average"
       ),
-      cancelled: kpiFrom(
-        "Cancellations",
-        cancelled.toLocaleString(),
-        cancelled,
-        percentChange(cancelled, prevCancelled),
-        "in period"
+      unpaid: kpiFrom(
+        "Unpaid holds",
+        unpaidPending.toLocaleString(),
+        unpaidPending,
+        null,
+        unpaidPending > 0 ? "needs payment or expire" : "queue clear",
+        {
+          attention: unpaidPending > 0,
+          href: "/admin/bookings?status=pending&payment=unpaid",
+        }
       ),
       fleetAvailable: kpiFrom(
         "Fleet available",
@@ -581,7 +573,6 @@ export async function getAdminOverview(
     categories,
     topCars,
     fleet,
-    messages,
     recentBookings,
   };
 }

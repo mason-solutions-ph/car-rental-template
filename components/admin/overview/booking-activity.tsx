@@ -42,7 +42,7 @@ function formatDay(value: string) {
   }).format(d);
 }
 
-export function StoreTraffic({
+export function BookingActivity({
   series,
   total,
 }: {
