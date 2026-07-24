@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, MotionStyle, Transition } from "motion/react"
+import { motion, useReducedMotion, MotionStyle, Transition } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -64,6 +64,8 @@ export const BorderBeam = ({
   initialOffset = 0,
   borderWidth = 1,
 }: BorderBeamProps) => {
+  const prefersReducedMotion = useReducedMotion()
+
   return (
     <div
       className="pointer-events-none absolute inset-0 rounded-[inherit] border-(length:--border-beam-width) border-transparent mask-[linear-gradient(transparent,transparent),linear-gradient(#000,#000)] mask-intersect [mask-clip:padding-box,border-box]"
@@ -89,18 +91,29 @@ export const BorderBeam = ({
           } as MotionStyle
         }
         initial={{ offsetDistance: `${initialOffset}%` }}
-        animate={{
-          offsetDistance: reverse
-            ? [`${100 - initialOffset}%`, `${-initialOffset}%`]
-            : [`${initialOffset}%`, `${100 + initialOffset}%`],
-        }}
-        transition={{
-          repeat: Infinity,
-          ease: "linear",
-          duration,
-          delay: -delay,
-          ...transition,
-        }}
+        // Reduced motion: the beam parks at its start offset instead of
+        // looping forever. An infinite linear travel is exactly the kind of
+        // perpetual motion prefers-reduced-motion exists to stop.
+        animate={
+          prefersReducedMotion
+            ? { offsetDistance: `${initialOffset}%` }
+            : {
+                offsetDistance: reverse
+                  ? [`${100 - initialOffset}%`, `${-initialOffset}%`]
+                  : [`${initialOffset}%`, `${100 + initialOffset}%`],
+              }
+        }
+        transition={
+          prefersReducedMotion
+            ? { duration: 0 }
+            : {
+                repeat: Infinity,
+                ease: "linear",
+                duration,
+                delay: -delay,
+                ...transition,
+              }
+        }
       />
     </div>
   )

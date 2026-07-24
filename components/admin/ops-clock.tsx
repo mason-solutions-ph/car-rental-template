@@ -1,5 +1,6 @@
 "use client";
 
+import { OpsRule } from "@/components/admin/ops-chrome";
 import { useNowMs } from "@/components/admin/use-now";
 import { cn } from "@/lib/utils";
 
@@ -16,7 +17,7 @@ const timeFormat = new Intl.DateTimeFormat("en-PH", {
   hour12: false,
 });
 
-/** Live clock for the ops strip. SSR renders a placeholder, never a time. */
+/** Live clock for the console chrome. SSR renders a placeholder, never a time. */
 export function OpsClock({ className }: { className?: string }) {
   const nowMs = useNowMs(1000);
   const now = nowMs === null ? null : new Date(nowMs);
@@ -24,11 +25,16 @@ export function OpsClock({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "text-muted-foreground font-mono text-[11px] tracking-wider tabular-nums uppercase",
+        "text-muted-foreground text-label flex items-center gap-2 font-mono font-medium tracking-[0.14em] tabular-nums uppercase",
         className
       )}
     >
-      {now ? `${dateFormat.format(now)} · ` : ""}
+      {now ? (
+        <>
+          <span>{dateFormat.format(now)}</span>
+          <OpsRule />
+        </>
+      ) : null}
       <time>{now ? timeFormat.format(now) : "--:--:--"}</time>
     </span>
   );

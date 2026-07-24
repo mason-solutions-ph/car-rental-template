@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CopyIcon } from "lucide-react";
+import { OpsEmptyValue } from "@/components/admin/ops-empty-value";
 import { toast } from "sonner";
 import { updateAdminBookingStatus } from "@/app/actions/admin-bookings";
 import {
@@ -40,11 +41,14 @@ function CopyableMono({
   label: string;
   value: string | null | undefined;
 }) {
-  const display = value ?? "—";
   return (
     <p className="text-muted-foreground flex items-start gap-1 break-all text-xs">
       <span className="shrink-0">{label}:</span>
-      <span className="font-mono">{display}</span>
+      {value ? (
+        <span className="font-mono">{value}</span>
+      ) : (
+        <OpsEmptyValue label={`No ${label.toLowerCase()}`} />
+      )}
       {value ? (
         <Button
           type="button"
@@ -109,7 +113,9 @@ export function BookingManageForm({
       </div>
 
       <div className="flex flex-col gap-1 text-sm">
-        <p className="font-medium">{booking.car_name ?? "—"}</p>
+        <p className="font-medium">
+          {booking.car_name ?? <OpsEmptyValue label="No car" />}
+        </p>
         <p className="text-muted-foreground font-mono text-xs tabular-nums">
           {formatDateTime(booking.pickup_at)} →{" "}
           {formatDateTime(booking.dropoff_at)}

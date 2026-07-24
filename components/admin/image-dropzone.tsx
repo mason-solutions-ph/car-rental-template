@@ -165,8 +165,8 @@ export function ImageDropzone({
               <UploadIcon className="text-muted-foreground size-5" />
               <p className="text-sm font-medium">Drop image or click to browse</p>
               <p className="text-muted-foreground text-xs">
-                JPG, PNG, or WebP · max {Math.round(MAX_CAR_IMAGE_BYTES / 1024 / 1024)}
-                MB
+                JPG, PNG, or WebP. Max{" "}
+                {Math.round(MAX_CAR_IMAGE_BYTES / 1024 / 1024)}MB.
               </p>
             </>
           )}

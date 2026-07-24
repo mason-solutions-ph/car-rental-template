@@ -1,11 +1,10 @@
-import { OpsPageHeader } from "@/components/admin/ops-chrome";
-import { Card, CardContent } from "@/components/ui/card";
+import { OpsEmptyState } from "@/components/admin/ops-empty-state";
+import { OpsEmptyValue } from "@/components/admin/ops-empty-value";
+import { OpsPanel } from "@/components/admin/ops-panel";
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty";
+  OpsSectionHeader,
+  opsTableHeadClass,
+} from "@/components/admin/ops-chrome";
 import {
   Table,
   TableBody,
@@ -20,9 +19,6 @@ import { formatDateTime } from "@/lib/format/date";
 
 export const metadata = { title: "Contact messages" };
 
-const headClass =
-  "font-mono text-[11px] uppercase tracking-wider text-muted-foreground";
-
 export default async function AdminMessagesPage() {
   if (!isSupabaseConfigured()) {
     return (
@@ -35,62 +31,62 @@ export default async function AdminMessagesPage() {
   const messages = await listAdminContactMessages();
 
   return (
-    <div className="flex flex-col gap-6">
-      <OpsPageHeader
-        eyebrow="Inbox"
-        title="Messages"
+    <section aria-labelledby="ops-inbox" className="flex flex-col gap-3">
+      <OpsSectionHeader
+        id="ops-inbox"
+        title="Inbox"
+        count={messages.length}
         description="Contact form submissions from the marketing site."
       />
       {messages.length === 0 ? (
-        <Empty className="border border-dashed p-6">
-          <EmptyHeader>
-            <EmptyTitle>No messages yet</EmptyTitle>
-            <EmptyDescription>
-              When customers use the contact page, their notes will show up
-              here.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <OpsEmptyState
+          title="No messages yet"
+          description="When customers use the contact page, their notes will show up here."
+        />
       ) : (
-        <Card className="overflow-hidden py-0">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className={headClass}>When</TableHead>
-                  <TableHead className={headClass}>From</TableHead>
-                  <TableHead className={headClass}>Subject</TableHead>
-                  <TableHead className={headClass}>Message</TableHead>
+        <OpsPanel>
+          <Table className="text-ui">
+            <TableHeader>
+              <TableRow>
+                <TableHead className={opsTableHeadClass}>When</TableHead>
+                <TableHead className={opsTableHeadClass}>From</TableHead>
+                <TableHead className={opsTableHeadClass}>Subject</TableHead>
+                <TableHead className={opsTableHeadClass}>Message</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {messages.map((m) => (
+                <TableRow key={m.id}>
+                  <TableCell className="text-muted-foreground font-mono text-xs whitespace-nowrap tabular-nums">
+                    {formatDateTime(m.created_at)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="font-medium">{m.name}</div>
+                    <div className="text-muted-foreground text-xs">
+                      <a
+                        href={`mailto:${m.email}`}
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {m.email}
+                      </a>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {m.subject ? (
+                      m.subject
+                    ) : (
+                      <OpsEmptyValue label="No subject" />
+                    )}
+                  </TableCell>
+                  <TableCell className="max-w-md whitespace-pre-wrap">
+                    {m.message}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {messages.map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="text-muted-foreground font-mono text-xs whitespace-nowrap tabular-nums">
-                      {formatDateTime(m.created_at)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{m.name}</div>
-                      <div className="text-muted-foreground text-xs">
-                        <a
-                          href={`mailto:${m.email}`}
-                          className="underline-offset-4 hover:underline"
-                        >
-                          {m.email}
-                        </a>
-                      </div>
-                    </TableCell>
-                    <TableCell>{m.subject ?? "—"}</TableCell>
-                    <TableCell className="max-w-md text-sm whitespace-pre-wrap">
-                      {m.message}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              ))}
+            </TableBody>
+          </Table>
+        </OpsPanel>
       )}
-    </div>
+    </section>
   );
 }

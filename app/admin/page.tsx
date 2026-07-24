@@ -1,194 +1,82 @@
-import Link from "next/link";
-import { ExpireHoldsButton } from "@/components/admin/expire-holds-button";
-import { OpsEyebrow, OpsPageHeader, OpsSectionHeader } from "@/components/admin/ops-chrome";
-import {
-  OpsBookingStatusBadge,
-  OpsPaymentStatusBadge,
-} from "@/components/admin/ops-status-badge";
-import { StatsTicker } from "@/components/admin/stats-ticker";
-import { UnpaidBookingsQueue } from "@/components/admin/unpaid-bookings-queue";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  getAdminDashboardStats,
-  getAdminPaidDailySeries,
-  listAdminContactMessages,
-  listAdminUnpaidPending,
-  listAdminUpcomingPickups,
-} from "@/lib/admin/queries";
-import { CHECKOUT_HOLD_MINUTES } from "@/lib/constants";
-import { formatDateTime } from "@/lib/format/date";
-import { isSupabaseConfigured } from "@/lib/env";
+import { format } from "date-fns";
+import { Suspense } from "react";
+
+import { CustomerReviews } from "@/components/admin/ecommerce/customer-reviews";
+import { Inventory } from "@/components/admin/ecommerce/inventory";
+import { KpiStrip } from "@/components/admin/ecommerce/kpi-strip";
+import { OverviewToolbar } from "@/components/admin/ecommerce/overview-toolbar";
+import { RecentOrders } from "@/components/admin/ecommerce/recent-orders";
+import { StoreTraffic } from "@/components/admin/ecommerce/store-traffic";
+import { TopProducts } from "@/components/admin/ecommerce/top-products";
+import { TrafficSources } from "@/components/admin/ecommerce/traffic-sources";
+import { getAdminOverview } from "@/lib/admin/overview";
+import { parseOverviewPeriod } from "@/lib/admin/overview-period";
 
 export const metadata = { title: "Admin" };
 
-const headClass =
-  "font-mono text-[11px] uppercase tracking-wider text-muted-foreground";
+type PageProps = {
+  searchParams: Promise<{ period?: string }>;
+};
 
-export default async function AdminDashboardPage() {
-  const stats = await getAdminDashboardStats();
-  const live = isSupabaseConfigured() && !stats.demo;
+export default async function AdminDashboardPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const period = parseOverviewPeriod(sp.period);
+  const data = await getAdminOverview(period);
+  const formattedDate = format(new Date(), "EEEE, do MMMM yyyy");
 
-  const [unpaidQueue, upcoming, recentMessages, series] = live
-    ? await Promise.all([
-        listAdminUnpaidPending(25),
-        listAdminUpcomingPickups(10, 7),
-        listAdminContactMessages(3),
-        getAdminPaidDailySeries(14),
-      ])
-    : [[], [], [], []];
+  const topShare =
+    data.topCars.length > 0 && data.topCars[0].share !== "—"
+      ? `${data.topCars
+          .map((c) => Number.parseInt(c.share, 10) || 0)
+          .reduce((a, b) => a + b, 0)}% of paid revenue`
+      : data.demo
+        ? "Demo fleet"
+        : "Top earners";
 
   return (
-    <div className="flex flex-col gap-8">
-      <OpsPageHeader
-        eyebrow="Overview"
-        title="Dashboard"
-        description={
-          stats.demo
-            ? "Demo stats from local fleet data. Connect Supabase for live bookings."
-            : "Operational overview for fleet and bookings."
-        }
-        actions={
-          live ? (
-            <>
-              <Button asChild size="sm" variant="secondary">
-                <Link href="/admin/cars?new=1">Add car</Link>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link href="/admin/bookings">All bookings</Link>
-              </Button>
-              <Button asChild size="sm" variant="outline">
-                <Link href="/admin/messages">Messages</Link>
-              </Button>
-            </>
-          ) : undefined
-        }
-      />
-
-      <StatsTicker stats={stats} series={series} live={live} />
-
-      {live ? (
-        <>
-          <section className="flex flex-col gap-3">
-            <OpsSectionHeader
-              eyebrow="Needs action"
-              tone="attention"
-              count={unpaidQueue.length}
-              description={`Pending checkouts still unpaid. Hold is ${CHECKOUT_HOLD_MINUTES} minutes. Reconcile when a webhook lags.`}
-              actions={
-                <>
-                  <ExpireHoldsButton />
-                  <Button asChild size="sm" variant="secondary">
-                    <Link href="/admin/bookings?status=pending&payment=unpaid">
-                      View all
-                    </Link>
-                  </Button>
-                </>
-              }
-            />
-            <UnpaidBookingsQueue rows={unpaidQueue} />
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <OpsSectionHeader
-              eyebrow="Pickups · next 7 days"
-              description="Confirmed or active rentals due for pickup."
-            />
-            {upcoming.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                No upcoming pickups in the next week.
-              </p>
-            ) : (
-              <div className="overflow-hidden rounded-xl border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className={headClass}>Reference</TableHead>
-                      <TableHead className={headClass}>Car</TableHead>
-                      <TableHead className={headClass}>Pickup</TableHead>
-                      <TableHead className={headClass}>Status</TableHead>
-                      <TableHead className={headClass}>Payment</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {upcoming.map((b) => (
-                      <TableRow key={b.id}>
-                        <TableCell>
-                          <Link
-                            href={`/admin/bookings?booking=${b.id}`}
-                            className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
-                          >
-                            {b.reference_code}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{b.car_name ?? "—"}</TableCell>
-                        <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
-                          {formatDateTime(b.pickup_at)}
-                        </TableCell>
-                        <TableCell>
-                          <OpsBookingStatusBadge status={b.status} />
-                        </TableCell>
-                        <TableCell>
-                          <OpsPaymentStatusBadge status={b.payment_status} />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </section>
-
-          <section className="flex flex-col gap-3">
-            <OpsSectionHeader
-              eyebrow="Inbox"
-              count={stats.openMessages}
-              description="Latest contact form submissions."
-              actions={
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/admin/messages">All messages</Link>
-                </Button>
-              }
-            />
-            {recentMessages.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No messages yet.</p>
-            ) : (
-              <ul className="divide-y rounded-xl border">
-                {recentMessages.map((m) => (
-                  <li key={m.id} className="flex flex-col gap-1 px-4 py-3">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="font-medium">{m.name}</span>
-                      <span className="text-muted-foreground font-mono text-xs tabular-nums">
-                        {formatDateTime(m.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground text-sm">
-                      {m.subject ?? "No subject"} · {m.email}
-                    </p>
-                    <p className="line-clamp-2 text-sm">{m.message}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </>
-      ) : (
-        <div className="flex flex-col gap-1 rounded-xl border border-dashed p-6">
-          <OpsEyebrow>Demo mode</OpsEyebrow>
-          <p className="text-sm font-medium">Live bookings need Supabase</p>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl leading-none tracking-tight">Fleet overview</h1>
           <p className="text-muted-foreground text-sm">
-            Fleet KPIs above use demo data. Connect a project and run
-            migrations to unlock the unpaid queue, pickups, and messages.
+            {formattedDate}
+            <span className="text-muted-foreground/80"> · {data.periodLabel}</span>
+            {data.demo ? (
+              <span className="text-muted-foreground/80"> · Demo mode</span>
+            ) : null}
           </p>
         </div>
-      )}
+
+        <Suspense fallback={null}>
+          <OverviewToolbar period={period} />
+        </Suspense>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        <KpiStrip data={data} />
+        <div className="xl:col-span-5">
+          <StoreTraffic series={data.activitySeries} total={data.activityTotal} />
+        </div>
+        <div className="xl:col-span-7">
+          <TrafficSources shares={data.statusShares} total={data.statusTotal} />
+        </div>
+        <div className="xl:col-span-4">
+          <TopProducts
+            categories={data.categories}
+            products={data.topCars}
+            headline={topShare}
+          />
+        </div>
+        <div className="xl:col-span-4">
+          <Inventory fleet={data.fleet} />
+        </div>
+        <div className="xl:col-span-4">
+          <CustomerReviews messages={data.messages} />
+        </div>
+        <div className="xl:col-span-12">
+          <RecentOrders rows={data.recentBookings} />
+        </div>
+      </div>
     </div>
   );
 }

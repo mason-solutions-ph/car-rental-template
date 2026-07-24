@@ -5,7 +5,12 @@ import Link from "next/link";
 import { CheckIcon, CopyIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
 import { BookingManageForm } from "@/components/admin/booking-manage-form";
-import { OpsPageHeader, OpsSectionHeader } from "@/components/admin/ops-chrome";
+import { OpsEmptyValue } from "@/components/admin/ops-empty-value";
+import { OpsPanel } from "@/components/admin/ops-panel";
+import {
+  OpsSectionHeader,
+  opsTableHeadClass,
+} from "@/components/admin/ops-chrome";
 import {
   OpsBookingStatusBadge,
   OpsPaymentStatusBadge,
@@ -38,8 +43,11 @@ import { formatMoney } from "@/lib/format/currency";
 import { formatDateTime } from "@/lib/format/date";
 import type { BookingStatus, PaymentStatus } from "@/types";
 
-const headClass =
-  "font-mono text-[11px] uppercase tracking-wider text-muted-foreground";
+const selectClass =
+  "border-input bg-background text-ui h-8 rounded-sm border px-2";
+
+const fieldLabelClass =
+  "text-muted-foreground text-label font-mono font-medium tracking-[0.14em] uppercase";
 
 async function copyText(label: string, value: string) {
   try {
@@ -120,16 +128,11 @@ export function BookingsAdmin({
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <OpsPageHeader
-        eyebrow="Bookings"
-        title="Bookings"
-        description="Unpaid holds first, then the full booking list with filters."
-      />
-
-      <section className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
+      <section aria-labelledby="ops-unpaid" className="flex flex-col gap-3">
         <OpsSectionHeader
-          eyebrow="Needs action"
+          id="ops-unpaid"
+          title="Needs action"
           tone="attention"
           count={unpaidQueue.length}
           description={`Needs payment or reconcile. Checkout hold: ${CHECKOUT_HOLD_MINUTES}m.`}
@@ -140,9 +143,10 @@ export function BookingsAdmin({
         />
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section aria-labelledby="ops-all-bookings" className="flex flex-col gap-3">
         <OpsSectionHeader
-          eyebrow="All bookings"
+          id="ops-all-bookings"
+          title="All bookings"
           count={filteredRows.length}
           actions={
             hasFilters ? (
@@ -153,48 +157,46 @@ export function BookingsAdmin({
           }
         />
 
-        <form
-          method="get"
-          className="flex flex-wrap items-end gap-3 rounded-xl border p-3"
-        >
-          <label className="flex min-w-[9rem] flex-1 flex-col gap-1 text-sm">
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
-              Status
-            </span>
-            <select
-              name="status"
-              defaultValue={filters.status ?? ""}
-              className="border-input bg-background h-9 rounded-lg border px-2.5 text-sm"
-            >
-              <option value="">All statuses</option>
-              {BOOKING_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex min-w-[9rem] flex-1 flex-col gap-1 text-sm">
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
-              Payment
-            </span>
-            <select
-              name="payment"
-              defaultValue={filters.paymentStatus ?? ""}
-              className="border-input bg-background h-9 rounded-lg border px-2.5 text-sm"
-            >
-              <option value="">All payments</option>
-              {PAYMENT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button type="submit" size="sm">
-            Apply
-          </Button>
-        </form>
+        {/* Native selects, deliberately: this is a plain GET form and shadcn's
+            Select is a controlled Radix widget that would need hidden inputs to
+            keep submitting. Styled to match the console instead. */}
+        <OpsPanel className="p-3">
+          <form method="get" className="flex flex-wrap items-end gap-3">
+            <label className="flex min-w-[9rem] flex-1 flex-col gap-1">
+              <span className={fieldLabelClass}>Status</span>
+              <select
+                name="status"
+                defaultValue={filters.status ?? ""}
+                className={selectClass}
+              >
+                <option value="">All statuses</option>
+                {BOOKING_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex min-w-[9rem] flex-1 flex-col gap-1">
+              <span className={fieldLabelClass}>Payment</span>
+              <select
+                name="payment"
+                defaultValue={filters.paymentStatus ?? ""}
+                className={selectClass}
+              >
+                <option value="">All payments</option>
+                {PAYMENT_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button type="submit" size="sm">
+              Apply
+            </Button>
+          </form>
+        </OpsPanel>
 
         {rows.length > 0 ? (
           <div className="relative max-w-sm">
@@ -209,25 +211,22 @@ export function BookingsAdmin({
           </div>
         ) : null}
 
-        <div className="overflow-hidden rounded-xl border">
-          <Table>
+        <OpsPanel>
+          <Table className="text-ui">
             <TableHeader>
               <TableRow>
-                <TableHead className={headClass}>Reference</TableHead>
-                <TableHead className={headClass}>Car</TableHead>
-                <TableHead className={headClass}>Pickup</TableHead>
-                <TableHead className={headClass}>Total</TableHead>
-                <TableHead className={headClass}>Status</TableHead>
-                <TableHead className={headClass}>Payment</TableHead>
+                <TableHead className={opsTableHeadClass}>Reference</TableHead>
+                <TableHead className={opsTableHeadClass}>Car</TableHead>
+                <TableHead className={opsTableHeadClass}>Pickup</TableHead>
+                <TableHead className={opsTableHeadClass}>Total</TableHead>
+                <TableHead className={opsTableHeadClass}>Status</TableHead>
+                <TableHead className={opsTableHeadClass}>Payment</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-muted-foreground text-sm"
-                  >
+                  <TableCell colSpan={6} className="text-muted-foreground">
                     {hasFilters
                       ? "No bookings match these filters."
                       : "No bookings yet."}
@@ -235,10 +234,7 @@ export function BookingsAdmin({
                 </TableRow>
               ) : filteredRows.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-muted-foreground text-sm"
-                  >
+                  <TableCell colSpan={6} className="text-muted-foreground">
                     No bookings match “{query.trim()}”.
                   </TableCell>
                 </TableRow>
@@ -257,18 +253,20 @@ export function BookingsAdmin({
                             e.stopPropagation();
                             openBooking(b);
                           }}
-                          className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
+                          className="font-mono font-medium underline-offset-4 hover:underline"
                         >
                           {b.reference_code}
                         </button>
                         <CopyReferenceButton code={b.reference_code} />
                       </div>
                     </TableCell>
-                    <TableCell>{b.car_name ?? "—"}</TableCell>
+                    <TableCell>
+                      {b.car_name ?? <OpsEmptyValue label="No car" />}
+                    </TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
                       {formatDateTime(b.pickup_at)}
                     </TableCell>
-                    <TableCell className="font-mono text-[13px] tabular-nums">
+                    <TableCell className="font-mono tabular-nums">
                       {formatMoney(b.total_cents)}
                     </TableCell>
                     <TableCell>
@@ -282,7 +280,7 @@ export function BookingsAdmin({
               )}
             </TableBody>
           </Table>
-        </div>
+        </OpsPanel>
       </section>
 
       <Sheet

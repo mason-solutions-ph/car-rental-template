@@ -1,7 +1,12 @@
 "use client"
 
-import { useEffect, useRef, type ComponentPropsWithoutRef } from "react"
-import { useInView, useMotionValue, useSpring } from "motion/react"
+import { useCallback, useEffect, useRef, type ComponentPropsWithoutRef } from "react"
+import {
+  useInView,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+} from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -29,8 +34,28 @@ export function NumberTicker({
     stiffness: 100,
   })
   const isInView = useInView(ref, { once: true, margin: "0px" })
+  const prefersReducedMotion = useReducedMotion()
+
+  const format = useCallback(
+    (n: number) =>
+      Intl.NumberFormat("en-US", {
+        minimumFractionDigits: decimalPlaces,
+        maximumFractionDigits: decimalPlaces,
+      }).format(Number(n.toFixed(decimalPlaces))),
+    [decimalPlaces]
+  )
+
+  // Reduced motion: show the final figure immediately, no count-up.
+  // Written to the DOM in an effect rather than rendered as children so the
+  // server and hydration markup stay identical (useReducedMotion is false
+  // on the server, so rendering the final value would mismatch).
+  useEffect(() => {
+    if (!prefersReducedMotion) return
+    if (ref.current) ref.current.textContent = format(value)
+  }, [prefersReducedMotion, value, format])
 
   useEffect(() => {
+    if (prefersReducedMotion) return
     let timer: ReturnType<typeof setTimeout> | null = null
 
     if (isInView) {
@@ -44,20 +69,24 @@ export function NumberTicker({
         clearTimeout(timer)
       }
     }
-  }, [motionValue, isInView, delay, value, direction, startValue])
+  }, [
+    motionValue,
+    isInView,
+    delay,
+    value,
+    direction,
+    startValue,
+    prefersReducedMotion,
+  ])
 
-  useEffect(
-    () =>
-      springValue.on("change", (latest) => {
-        if (ref.current) {
-          ref.current.textContent = Intl.NumberFormat("en-US", {
-            minimumFractionDigits: decimalPlaces,
-            maximumFractionDigits: decimalPlaces,
-          }).format(Number(latest.toFixed(decimalPlaces)))
-        }
-      }),
-    [springValue, decimalPlaces]
-  )
+  useEffect(() => {
+    if (prefersReducedMotion) return
+    return springValue.on("change", (latest) => {
+      if (ref.current) {
+        ref.current.textContent = format(latest)
+      }
+    })
+  }, [springValue, format, prefersReducedMotion])
 
   return (
     <span

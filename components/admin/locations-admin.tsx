@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { createLocation, updateLocation } from "@/app/actions/locations";
 import { LocationForm } from "@/components/admin/location-form";
-import { OpsPageHeader } from "@/components/admin/ops-chrome";
-import { Button } from "@/components/ui/button";
+import { OpsEmptyState } from "@/components/admin/ops-empty-state";
+import { OpsEmptyValue } from "@/components/admin/ops-empty-value";
+import { OpsPanel } from "@/components/admin/ops-panel";
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  OpsSectionHeader,
+  opsTableHeadClass,
+} from "@/components/admin/ops-chrome";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -18,6 +19,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { Location } from "@/types";
 
 type SheetMode =
@@ -60,10 +69,16 @@ export function LocationsAdmin({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <OpsPageHeader
-        eyebrow="Pickup hubs"
-        title="Locations"
+    <section aria-labelledby="ops-locations" className="flex flex-col gap-3">
+      <OpsSectionHeader
+        id="ops-locations"
+        title="Pickup hubs"
+        count={locations.length}
+        description={
+          canWrite
+            ? undefined
+            : "Demo locations are read-only. Connect Supabase to create and edit."
+        }
         actions={
           canWrite ? (
             <Button size="sm" onClick={() => setSheet({ type: "create" })}>
@@ -73,54 +88,71 @@ export function LocationsAdmin({
         }
       />
       {locations.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-8 text-center">
-          <p className="text-sm font-medium">No locations yet</p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Add pickup hubs so customers can choose where to collect a car.
-          </p>
-          {canWrite ? (
-            <Button
-              size="sm"
-              className="mt-4"
-              onClick={() => setSheet({ type: "create" })}
-            >
-              Add location
-            </Button>
-          ) : null}
-        </div>
+        <OpsEmptyState
+          title="No locations yet"
+          description="Add pickup hubs so customers can choose where to collect a car."
+          action={
+            canWrite ? (
+              <Button size="sm" onClick={() => setSheet({ type: "create" })}>
+                Add location
+              </Button>
+            ) : null
+          }
+        />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {locations.map((loc) => (
-            <Card key={loc.id}>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  {canWrite ? (
-                    <button
-                      type="button"
-                      onClick={() => setSheet({ type: "edit", location: loc })}
-                      className="text-left underline-offset-4 hover:underline"
-                    >
-                      {loc.name}
-                    </button>
-                  ) : (
-                    loc.name
-                  )}
-                </CardTitle>
-                <CardDescription className="font-mono text-xs">
-                  {loc.city}
-                  {loc.region ? `, ${loc.region}` : ""} · {loc.slug}
-                  {!loc.is_published ? " · unpublished" : ""}
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
+        <OpsPanel>
+          <Table className="text-ui">
+            <TableHeader>
+              <TableRow>
+                <TableHead className={opsTableHeadClass}>Name</TableHead>
+                <TableHead className={opsTableHeadClass}>City</TableHead>
+                <TableHead className={opsTableHeadClass}>Slug</TableHead>
+                <TableHead className={opsTableHeadClass}>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {locations.map((loc) => (
+                <TableRow key={loc.id}>
+                  <TableCell className="font-medium">
+                    {canWrite ? (
+                      <button
+                        type="button"
+                        onClick={() => setSheet({ type: "edit", location: loc })}
+                        className="text-left underline-offset-4 hover:underline"
+                      >
+                        {loc.name}
+                      </button>
+                    ) : (
+                      loc.name
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {loc.city}
+                    {loc.region ? `, ${loc.region}` : ""}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground font-mono text-xs">
+                    {loc.slug || <OpsEmptyValue label="No slug" />}
+                  </TableCell>
+                  <TableCell>
+                    {loc.is_published ? (
+                      <span className="text-muted-foreground text-label font-mono tracking-[0.14em] uppercase">
+                        Published
+                      </span>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="text-label font-mono tracking-[0.14em] uppercase"
+                      >
+                        Draft
+                      </Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </OpsPanel>
       )}
-      {!canWrite ? (
-        <p className="text-muted-foreground text-xs">
-          Demo locations are read-only. Connect Supabase to create and edit.
-        </p>
-      ) : null}
 
       <Sheet
         open={sheet !== null}
@@ -157,6 +189,6 @@ export function LocationsAdmin({
           </div>
         </SheetContent>
       </Sheet>
-    </div>
+    </section>
   );
 }

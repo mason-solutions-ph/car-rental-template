@@ -19,7 +19,9 @@ export default function AdminError({
     <div className="flex flex-col gap-4 p-2">
       <div className="flex flex-col gap-1">
         <OpsEyebrow tone="attention">Fault</OpsEyebrow>
-        <h2 className="text-lg font-semibold">Admin error</h2>
+        <h2 className="text-heading font-semibold tracking-tight">
+          Admin error
+        </h2>
       </div>
       <p className="text-muted-foreground text-sm">
         Something went wrong in the admin area. Try again or return to the

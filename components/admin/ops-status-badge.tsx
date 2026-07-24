@@ -22,7 +22,10 @@ function OpsBadge({ tone, label }: { tone: string; label: string }) {
   return (
     <Badge
       variant="outline"
-      className={cn("gap-1.5 font-mono text-[10px] tracking-wider uppercase", tone)}
+      className={cn(
+        "text-label gap-1.5 font-mono tracking-[0.14em] uppercase",
+        tone
+      )}
     >
       <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
       {label}

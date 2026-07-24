@@ -7,9 +7,11 @@ export type PublishedCarsPage = {
   pageSize: number;
 };
 
+export type FleetMode = "demo" | "live";
+
 /** Public + admin fleet reads. Two adapters: demo (in-memory seed) and Supabase. */
 export type FleetRepo = {
-  readonly mode: "demo" | "live";
+  readonly mode: FleetMode;
   listPublishedCars(filters?: CarFilters): Promise<PublishedCarsPage>;
   getPublishedCarBySlug(slug: string): Promise<CarWithImages | null>;
   /** All cars including unpublished (admin). */
