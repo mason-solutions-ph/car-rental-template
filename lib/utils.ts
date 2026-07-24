@@ -19,7 +19,7 @@ export const getInitials = (str: string): string => {
   )
 }
 
-/** Major-unit currency formatter (e.g. invoice demo USD). Not for centavos/PHP. */
+/** Major-unit currency formatter (invoice demo / paper). */
 export function formatCurrency(
   amount: number,
   opts?: {
@@ -38,12 +38,10 @@ export function formatCurrency(
     noDecimals,
   } = opts ?? {}
 
-  const formatOptions: Intl.NumberFormatOptions = {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: noDecimals ? 0 : minimumFractionDigits,
     maximumFractionDigits: noDecimals ? 0 : maximumFractionDigits,
-  }
-
-  return new Intl.NumberFormat(locale, formatOptions).format(amount)
+  }).format(amount)
 }
