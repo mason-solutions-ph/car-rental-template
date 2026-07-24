@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { HoldTimer } from "@/components/admin/hold-timer";
+import { OpsEmptyState } from "@/components/admin/ops-empty-state";
+import { OpsEmptyValue } from "@/components/admin/ops-empty-value";
+import { OpsPanel } from "@/components/admin/ops-panel";
+import { opsTableHeadClass } from "@/components/admin/ops-chrome";
 import { OpsPaymentStatusBadge } from "@/components/admin/ops-status-badge";
 import { ReconcilePaymentButton } from "@/components/admin/reconcile-payment-button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { BorderBeam } from "@/components/ui/border-beam";
 import {
   Table,
   TableBody,
@@ -22,9 +20,6 @@ import { formatMoney } from "@/lib/format/currency";
 import { formatDateTime } from "@/lib/format/date";
 import type { AdminBookingListItem } from "@/lib/admin/queries";
 
-const headClass =
-  "font-mono text-[11px] uppercase tracking-wider text-muted-foreground";
-
 export function UnpaidBookingsQueue({
   rows,
   emptyMessage = "No unpaid pending bookings.",
@@ -36,31 +31,29 @@ export function UnpaidBookingsQueue({
   onSelectBooking?: (booking: AdminBookingListItem) => void;
 }) {
   if (!rows.length) {
-    return (
-      <Empty className="border border-dashed p-6">
-        <EmptyHeader>
-          <EmptyTitle className="font-mono text-xs tracking-wider uppercase">
-            Queue clear
-          </EmptyTitle>
-          <EmptyDescription>{emptyMessage}</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
+    return <OpsEmptyState title="Queue clear" description={emptyMessage} />;
   }
 
   return (
-    <Card className="overflow-hidden py-0">
-      <CardContent className="p-0">
-        <Table>
+    <OpsPanel className="relative">
+      {/* Attention-only beam: amber tokens, never the Magic UI purple defaults. */}
+      <BorderBeam
+        size={80}
+        duration={8}
+        borderWidth={1.5}
+        colorFrom="var(--attention)"
+        colorTo="oklch(0.75 0.12 70)"
+      />
+        <Table className="text-ui">
           <TableHeader>
             <TableRow>
-              <TableHead className={headClass}>Reference</TableHead>
-              <TableHead className={headClass}>Car</TableHead>
-              <TableHead className={headClass}>Created</TableHead>
-              <TableHead className={headClass}>Hold</TableHead>
-              <TableHead className={headClass}>Total</TableHead>
-              <TableHead className={headClass}>Payment</TableHead>
-              <TableHead className={`${headClass} text-right`}>
+              <TableHead className={opsTableHeadClass}>Reference</TableHead>
+              <TableHead className={opsTableHeadClass}>Car</TableHead>
+              <TableHead className={opsTableHeadClass}>Created</TableHead>
+              <TableHead className={opsTableHeadClass}>Hold</TableHead>
+              <TableHead className={opsTableHeadClass}>Total</TableHead>
+              <TableHead className={opsTableHeadClass}>Payment</TableHead>
+              <TableHead className={`${opsTableHeadClass} text-right`}>
                 Action
               </TableHead>
             </TableRow>
@@ -75,20 +68,22 @@ export function UnpaidBookingsQueue({
                       <button
                         type="button"
                         onClick={() => onSelectBooking(b)}
-                        className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
+                        className="font-mono font-medium underline-offset-4 hover:underline"
                       >
                         {b.reference_code}
                       </button>
                     ) : (
                       <Link
                         href={`/admin/bookings?booking=${b.id}`}
-                        className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
+                        className="font-mono font-medium underline-offset-4 hover:underline"
                       >
                         {b.reference_code}
                       </Link>
                     )}
                   </TableCell>
-                  <TableCell>{b.car_name ?? "—"}</TableCell>
+                  <TableCell>
+                    {b.car_name ?? <OpsEmptyValue label="No car" />}
+                  </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-xs tabular-nums">
                     {formatDateTime(b.created_at)}
                   </TableCell>
@@ -98,7 +93,7 @@ export function UnpaidBookingsQueue({
                       holdMinutes={CHECKOUT_HOLD_MINUTES}
                     />
                   </TableCell>
-                  <TableCell className="font-mono text-[13px] tabular-nums">
+                  <TableCell className="font-mono tabular-nums">
                     {formatMoney(b.total_cents)}
                   </TableCell>
                   <TableCell>
@@ -112,7 +107,7 @@ export function UnpaidBookingsQueue({
                         variant="outline"
                       />
                     ) : (
-                      <span className="text-muted-foreground font-mono text-[11px] uppercase">
+                      <span className="text-muted-foreground text-label font-mono tracking-[0.14em] uppercase">
                         No session
                       </span>
                     )}
@@ -122,7 +117,6 @@ export function UnpaidBookingsQueue({
             })}
           </TableBody>
         </Table>
-      </CardContent>
-    </Card>
+    </OpsPanel>
   );
 }
