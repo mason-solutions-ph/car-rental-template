@@ -48,7 +48,20 @@ SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY jwt>
 
 Migrations live in `supabase/migrations/` (includes grants for `anon` / `authenticated`). Seed: `supabase/seed.sql` (10 cars, 3 PH locations).
 
-Promote an admin after signup:
+### Local admin (no manual sign-in)
+
+When `NEXT_PUBLIC_SUPABASE_URL` is loopback (`127.0.0.1` / `localhost`) and you are not in production, the app **auto-signs in** as a local admin so `/admin` works immediately.
+
+| Field | Default |
+|-------|---------|
+| Email | `admin@localhost.dev` |
+| Password | `adminadmin` |
+
+Seed creates this user on `supabase db reset --local`. If the user is missing, the app creates it via the service role key on first request.
+
+Opt out: `DEV_AUTO_ADMIN=0` in `.env.local`.
+
+Promote any other user after signup:
 
 ```sql
 update public.profiles set role = 'admin' where id = '<your-user-uuid>';

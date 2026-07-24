@@ -92,3 +92,68 @@ insert into public.car_images (car_id, url, alt, sort_order) values
   ('a0000000-0000-4000-8000-000000000004', 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=1200&q=80', 'Fortuner angle', 1),
   ('a0000000-0000-4000-8000-000000000006', 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=1200&q=80', 'BMW cabin / exterior', 1),
   ('a0000000-0000-4000-8000-000000000009', 'https://images.unsplash.com/photo-1584345604476-8ec5f82d4963?w=1200&q=80', '911 side profile', 1);
+
+-- Local admin (password: adminadmin). App auto-signs in when Supabase URL is loopback.
+-- Also ensured at runtime by lib/auth/local-dev-admin.ts if this seed is missing.
+insert into auth.users (
+  instance_id,
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change
+) values (
+  '00000000-0000-0000-0000-000000000000',
+  'b0000000-0000-4000-8000-0000000000ad',
+  'authenticated',
+  'authenticated',
+  'admin@localhost.dev',
+  extensions.crypt('adminadmin', extensions.gen_salt('bf')),
+  now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{"full_name":"Local Admin"}'::jsonb,
+  now(),
+  now(),
+  '',
+  '',
+  '',
+  ''
+);
+
+insert into auth.identities (
+  id,
+  user_id,
+  identity_data,
+  provider,
+  provider_id,
+  last_sign_in_at,
+  created_at,
+  updated_at
+) values (
+  'b0000000-0000-4000-8000-0000000000ad',
+  'b0000000-0000-4000-8000-0000000000ad',
+  jsonb_build_object(
+    'sub', 'b0000000-0000-4000-8000-0000000000ad',
+    'email', 'admin@localhost.dev',
+    'email_verified', true,
+    'phone_verified', false
+  ),
+  'email',
+  'b0000000-0000-4000-8000-0000000000ad',
+  now(),
+  now(),
+  now()
+);
+
+update public.profiles
+set role = 'admin', full_name = 'Local Admin'
+where id = 'b0000000-0000-4000-8000-0000000000ad';

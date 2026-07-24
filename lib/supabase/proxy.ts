@@ -1,11 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  isDevAutoAdminEnabled,
+  signInLocalDevAdmin,
+} from "@/lib/auth/local-dev-admin";
 import { isSupabaseConfigured } from "@/lib/env";
 
 /**
  * Refreshes the Supabase auth session on every matched request.
  * Skips when env vars are missing so local setup still boots.
- * Does not force login redirects — add route guards when you add auth pages.
+ * On local Supabase (dev), auto-signs in as the seed admin when there is no session.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -45,7 +49,13 @@ export async function updateSession(request: NextRequest) {
 
   // Do not run code between createServerClient and getClaims().
   // Removing getClaims() can cause users to be randomly logged out with SSR.
-  await supabase.auth.getClaims();
+  const { data: claimsData } = await supabase.auth.getClaims();
+
+  // Local only: if nobody is signed in, become the seeded admin so /admin works
+  // without a manual login. Opt out with DEV_AUTO_ADMIN=0.
+  if (!claimsData?.claims && isDevAutoAdminEnabled()) {
+    await signInLocalDevAdmin(supabase);
+  }
 
   return supabaseResponse;
 }
