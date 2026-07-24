@@ -1,6 +1,8 @@
 import {
   CalendarCheckIcon,
+  CalendarDaysIcon,
   CarIcon,
+  FileTextIcon,
   LayoutDashboardIcon,
   UsersIcon,
   type LucideIcon,
@@ -43,7 +45,7 @@ export interface NavGroup {
   items: NavMainItem[];
 }
 
-/** Admin console nav — fleet ops routes only. */
+/** Admin console nav — mirrors product routes, styled like the source dashboard sidebar. */
 export const sidebarItems: NavGroup[] = [
   {
     id: 1,
@@ -54,6 +56,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Dashboard",
         url: "/admin",
         icon: LayoutDashboardIcon,
+      },
+      {
+        id: "calendar",
+        title: "Calendar",
+        url: "/admin/calendar",
+        icon: CalendarDaysIcon,
       },
     ],
   },
@@ -78,6 +86,12 @@ export const sidebarItems: NavGroup[] = [
         title: "Users",
         url: "/admin/users",
         icon: UsersIcon,
+      },
+      {
+        id: "invoice",
+        title: "Invoice",
+        url: "/admin/invoice",
+        icon: FileTextIcon,
       },
     ],
   },

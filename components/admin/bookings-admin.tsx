@@ -4,6 +4,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckIcon, CopyIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AddOnsiteBookingDialog,
+  type OnsiteCarOption,
+} from "@/components/admin/add-onsite-booking-dialog";
 import { BookingManageForm } from "@/components/admin/booking-manage-form";
 import { OpsEmptyValue } from "@/components/admin/ops-empty-value";
 import { OpsPanel } from "@/components/admin/ops-panel";
@@ -90,11 +94,19 @@ export function BookingsAdmin({
   unpaidQueue,
   filters,
   initialBookingId = null,
+  openOnsiteOnMount = false,
+  onsiteCars = [],
+  onsiteLocationId = "",
+  onsiteLocationName = "",
 }: {
   rows: AdminBookingListItem[];
   unpaidQueue: AdminBookingListItem[];
   filters: { status?: BookingStatus; paymentStatus?: PaymentStatus };
   initialBookingId?: string | null;
+  openOnsiteOnMount?: boolean;
+  onsiteCars?: OnsiteCarOption[];
+  onsiteLocationId?: string;
+  onsiteLocationName?: string;
 }) {
   const hasFilters = Boolean(filters.status || filters.paymentStatus);
   const allForSheet = [...unpaidQueue, ...rows];
@@ -149,11 +161,19 @@ export function BookingsAdmin({
           title="All bookings"
           count={filteredRows.length}
           actions={
-            hasFilters ? (
-              <Button asChild size="sm" variant="ghost">
-                <Link href="/admin/bookings">Clear filters</Link>
-              </Button>
-            ) : undefined
+            <div className="flex flex-wrap items-center gap-2">
+              <AddOnsiteBookingDialog
+                cars={onsiteCars}
+                locationId={onsiteLocationId}
+                locationName={onsiteLocationName}
+                defaultOpen={openOnsiteOnMount}
+              />
+              {hasFilters ? (
+                <Button asChild size="sm" variant="ghost">
+                  <Link href="/admin/bookings">Clear filters</Link>
+                </Button>
+              ) : null}
+            </div>
           }
         />
 
@@ -204,7 +224,7 @@ export function BookingsAdmin({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search reference or car…"
+              placeholder="Search reference or carΓÇª"
               className="pl-8"
               aria-label="Search bookings"
             />
@@ -235,7 +255,7 @@ export function BookingsAdmin({
               ) : filteredRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-muted-foreground">
-                    No bookings match “{query.trim()}”.
+                    No bookings match ΓÇ£{query.trim()}ΓÇ¥.
                   </TableCell>
                 </TableRow>
               ) : (

@@ -223,6 +223,42 @@ export type MarkPaidData = {
 /**
  * Mark paid → confirmed. Refuses cancelled/expired (no resurrect).
  */
+/**
+ * Onsite walk-in paid in cash: create the rental, then mark paid/confirmed
+ * immediately (no PayMongo checkout). Uses the same availability + quote path
+ * as online create.
+ */
+export async function createOnsiteCashBooking(
+  store: BookingStore,
+  intent: CreateBookingIntent,
+  now: Date = new Date()
+): Promise<LifecycleResult<CreateBookingResult>> {
+  const created = await createBooking(store, intent, now);
+  if (!created.ok) return created;
+
+  const paid = await markPaid(
+    store,
+    {
+      bookingId: created.data.bookingId,
+      amountPaidCents: created.data.totalCents,
+    },
+    now
+  );
+  if (!paid.ok) {
+    return {
+      ok: false,
+      error: paid.error,
+      code: paid.code,
+    };
+  }
+
+  await store.privilegedUpdate(created.data.bookingId, {
+    admin_note: "Onsite cash payment",
+  });
+
+  return created;
+}
+
 export async function markPaid(
   store: BookingStore,
   input: MarkPaidInput,

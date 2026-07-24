@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { getAdminBookingById } from "@/lib/admin/queries";
 import {
   adminTransition,
+  createOnsiteCashBooking,
   expireAllStaleUnpaid,
 } from "@/lib/bookings/lifecycle";
 import { createPrivilegedBookingStore } from "@/lib/bookings/privileged-store";
@@ -15,6 +16,7 @@ import {
   isSupabaseConfigured,
 } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
+import { bookingCreateSchema } from "@/lib/validations/booking";
 import type { BookingStatus } from "@/types";
 
 export async function updateAdminBookingStatus(formData: FormData): Promise<void> {
@@ -45,6 +47,7 @@ export async function updateAdminBookingStatus(formData: FormData): Promise<void
   }
 
   revalidatePath("/admin/bookings");
+  revalidatePath(`/admin/bookings/${id}`);
   revalidatePath("/admin");
 }
 
@@ -107,6 +110,7 @@ export async function reconcileAdminBooking(
   });
 
   revalidatePath("/admin/bookings");
+  revalidatePath(`/admin/bookings/${booking.id}`);
   revalidatePath("/admin");
 
   if (result.reconciled) {
@@ -133,6 +137,107 @@ export async function reconcileAdminBooking(
     ok: reason === "already_paid" || reason === "not_paid_yet",
     reconciled: false,
     message: messages[reason] ?? `Reconcile did not apply (${reason}).`,
+  };
+}
+
+export type CreateOnsiteCashResult = {
+  ok: boolean;
+  message: string;
+  bookingId?: string;
+  referenceCode?: string;
+  totalCents?: number;
+};
+
+/**
+ * Walk-in rental paid cash at the counter: create booking + mark paid/confirmed
+ * in one step (no PayMongo). customer_id is the admin user (driver fields hold
+ * the guest identity).
+ */
+export async function createAdminOnsiteCashBooking(
+  formData: FormData
+): Promise<CreateOnsiteCashResult> {
+  if (!isSupabaseConfigured()) {
+    return { ok: false, message: "Supabase is not configured." };
+  }
+
+  const session = await requireAdmin();
+
+  const pickupDate = String(formData.get("pickupDate") || "");
+  const pickupTime = String(formData.get("pickupTime") || "10:00");
+  const dropoffDate = String(formData.get("dropoffDate") || "");
+  const dropoffTime = String(formData.get("dropoffTime") || "10:00");
+  const pickupAt =
+    String(formData.get("pickupAt") || "") ||
+    (pickupDate ? `${pickupDate}T${pickupTime}` : "");
+  const dropoffAt =
+    String(formData.get("dropoffAt") || "") ||
+    (dropoffDate ? `${dropoffDate}T${dropoffTime}` : "");
+
+  const locationId = String(formData.get("locationId") || "");
+
+  const parsed = bookingCreateSchema.safeParse({
+    carId: formData.get("carId"),
+    pickupLocationId: formData.get("pickupLocationId") || locationId,
+    dropoffLocationId: formData.get("dropoffLocationId") || locationId,
+    pickupAt,
+    dropoffAt,
+    driverFullName: formData.get("driverFullName"),
+    driverPhone: formData.get("driverPhone"),
+    driverLicenseNumber: formData.get("driverLicenseNumber"),
+    customerNote: formData.get("customerNote") || undefined,
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message:
+        parsed.error.issues[0]?.message ??
+        "Invalid booking details. Check dates and required fields.",
+    };
+  }
+
+  const data = parsed.data;
+
+  // Prefer service-role for mark paid; fall back to session client (admin RLS).
+  let store;
+  try {
+    store = isServiceRoleConfigured()
+      ? createPrivilegedBookingStore()
+      : createSupabaseBookingStore({ user: await createClient() });
+  } catch {
+    store = createSupabaseBookingStore({ user: await createClient() });
+  }
+
+  const note = data.customerNote?.trim();
+  const result = await createOnsiteCashBooking(store, {
+    customerId: session.user.id,
+    carId: data.carId,
+    pickupLocationId: data.pickupLocationId,
+    dropoffLocationId: data.dropoffLocationId,
+    pickupAt: data.pickupAt,
+    dropoffAt: data.dropoffAt,
+    driverFullName: data.driverFullName,
+    driverPhone: data.driverPhone,
+    driverLicenseNumber: data.driverLicenseNumber,
+    customerNote: note
+      ? `Onsite cash. ${note}`
+      : "Onsite cash payment",
+  });
+
+  if (!result.ok) {
+    return { ok: false, message: result.error };
+  }
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/admin");
+  revalidatePath("/admin/calendar");
+
+  return {
+    ok: true,
+    message: `Booked ${result.data.referenceCode} — paid cash, confirmed.`,
+    bookingId: result.data.bookingId,
+    referenceCode: result.data.referenceCode,
+    totalCents: result.data.totalCents,
   };
 }
 

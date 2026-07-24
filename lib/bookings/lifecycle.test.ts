@@ -4,6 +4,7 @@ import {
   canAdminTransition,
   canCustomerCancel,
   createBooking,
+  createOnsiteCashBooking,
   markPaid,
   expireUnpaidForCar,
   expireAllStaleUnpaid,
@@ -124,6 +125,30 @@ describe("createBooking + expire", () => {
     }
     expect(store.bookings[0]?.payment_status).toBe("unpaid");
     expect(store.bookings[0]?.status).toBe("pending");
+  });
+
+  it("createOnsiteCashBooking creates paid confirmed rental", async () => {
+    const now = new Date("2026-08-01T12:00:00.000Z");
+    const store = createMemoryBookingStore({ cars: [car] }, () => now);
+    const result = await createOnsiteCashBooking(
+      store,
+      {
+        customerId: "admin-1",
+        carId: "car-1",
+        pickupLocationId: "loc-1",
+        dropoffLocationId: "loc-1",
+        pickupAt: "2026-08-10T10:00:00.000Z",
+        dropoffAt: "2026-08-12T10:00:00.000Z",
+        driverFullName: "Walk In",
+        driverPhone: "+639171111111",
+        driverLicenseNumber: "CASH1",
+        customerNote: "Paid cash at counter",
+      },
+      now
+    );
+    expect(result.ok).toBe(true);
+    expect(store.bookings[0]?.payment_status).toBe("paid");
+    expect(store.bookings[0]?.status).toBe("confirmed");
   });
 
   it("expires stale unpaid hold then allows rebook", async () => {
